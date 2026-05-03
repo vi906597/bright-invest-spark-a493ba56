@@ -112,6 +112,23 @@ const Dashboard = () => {
           "Investor"
       );
 
+      // Check pending Bharat4u order
+      const pending = localStorage.getItem("pending_b4u_order");
+      if (pending) {
+        try {
+          const { data } = await supabase.functions.invoke("bharat4u-check-status", {
+            body: { order_id: pending },
+          });
+          if (data?.status === "success") {
+            toast({ title: "Payment Successful 🎉", description: `UTR: ${data.utr || "-"}` });
+            localStorage.removeItem("pending_b4u_order");
+          } else if (data?.status === "failed") {
+            toast({ title: "Payment Failed", variant: "destructive" });
+            localStorage.removeItem("pending_b4u_order");
+          }
+        } catch {}
+      }
+
       await loadStats(authUser.id);
     };
 
@@ -123,9 +140,40 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  // ✅ Dono buttons yahan redirect honge
+  const startBharatPayment = async (amount: number, planName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("phone")
+        .eq("user_id", user?.id || "")
+        .maybeSingle();
+
+      const { data, error } = await supabase.functions.invoke("bharat4u-create-order", {
+        body: { amount, plan_name: planName, customer_mobile: profile?.phone || "9999999999" },
+      });
+
+      if (error || !data?.payment_url) {
+        toast({
+          title: "Payment Error",
+          description: data?.error || error?.message || "Could not create order",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Save order id for status check on return
+      localStorage.setItem("pending_b4u_order", data.order_id);
+      window.location.href = data.payment_url;
+    } catch (e: any) {
+      toast({ title: "Error", description: e?.message || "Failed", variant: "destructive" });
+    }
+  };
+
   const handlePayment = () => {
-    window.location.href = REDIRECT_URL;
+    const plan = sipPlans.find((p) => p.id === selectedPlan);
+    if (!plan) return;
+    startBharatPayment(plan.amount, plan.name);
   };
 
   const handleCustomPay = () => {
@@ -138,7 +186,7 @@ const Dashboard = () => {
       });
       return;
     }
-    window.location.href = REDIRECT_URL;
+    startBharatPayment(amt, "Custom SIP");
   };
 
   return (
