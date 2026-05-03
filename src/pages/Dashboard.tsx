@@ -178,10 +178,10 @@ const Dashboard = () => {
 
   const handleCustomPay = () => {
     const amt = parseInt(customAmount);
-    if (!amt || amt < 100) {
+    if (!amt || amt < 10) {
       toast({
         title: "Invalid Amount",
-        description: "Minimum SIP amount is ₹100",
+        description: "Minimum SIP amount is ₹10",
         variant: "destructive",
       });
       return;
@@ -367,10 +367,10 @@ const Dashboard = () => {
               </span>
               <input
                 type="number"
-                placeholder="Enter amount (min ₹100)"
+                placeholder="Enter amount (min ₹10)"
                 value={customAmount}
                 onChange={(e) => setCustomAmount(e.target.value)}
-                min={100}
+                min={10}
                 className="w-full h-12 pl-8 pr-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>

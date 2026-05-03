@@ -1,2 +1,10 @@
 project_id = "sgghqcwhkiyhlitmynjp"
 
+[functions.bharat4u-webhook]
+verify_jwt = false
+
+[functions.create-razorpay-order]
+verify_jwt = false
+
+[functions.verify-razorpay-payment]
+verify_jwt = false
