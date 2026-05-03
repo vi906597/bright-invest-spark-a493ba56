@@ -178,10 +178,10 @@ const Dashboard = () => {
 
   const handleCustomPay = () => {
     const amt = parseInt(customAmount);
-    if (!amt || amt < 100) {
+    if (!amt || amt < 10) {
       toast({
         title: "Invalid Amount",
-        description: "Minimum SIP amount is ₹100",
+        description: "Minimum SIP amount is ₹10",
         variant: "destructive",
       });
       return;
