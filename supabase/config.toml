@@ -1,2 +1,4 @@
 project_id = "sgghqcwhkiyhlitmynjp"
 
+[functions.bharat4u-webhook]
+verify_jwt = false
