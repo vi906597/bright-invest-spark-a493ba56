@@ -112,6 +112,23 @@ const Dashboard = () => {
           "Investor"
       );
 
+      // Check pending Bharat4u order
+      const pending = localStorage.getItem("pending_b4u_order");
+      if (pending) {
+        try {
+          const { data } = await supabase.functions.invoke("bharat4u-check-status", {
+            body: { order_id: pending },
+          });
+          if (data?.status === "success") {
+            toast({ title: "Payment Successful 🎉", description: `UTR: ${data.utr || "-"}` });
+            localStorage.removeItem("pending_b4u_order");
+          } else if (data?.status === "failed") {
+            toast({ title: "Payment Failed", variant: "destructive" });
+            localStorage.removeItem("pending_b4u_order");
+          }
+        } catch {}
+      }
+
       await loadStats(authUser.id);
     };
 
