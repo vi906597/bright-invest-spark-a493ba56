@@ -193,6 +193,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          balance: number | null
           created_at: string
           email_verified: boolean | null
           full_name: string | null
@@ -203,6 +204,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          balance?: number | null
           created_at?: string
           email_verified?: boolean | null
           full_name?: string | null
@@ -213,6 +215,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          balance?: number | null
           created_at?: string
           email_verified?: boolean | null
           full_name?: string | null
@@ -296,11 +299,45 @@ export type Database = {
         }
         Relationships: []
       }
+      withdrawals: {
+        Row: {
+          account_holder: string | null
+          account_number: string | null
+          amount: number | null
+          bank_name: string | null
+          created_at: string | null
+          id: string
+          status: string | null
+          user_id: string | null
+        }
+        Insert: {
+          account_holder?: string | null
+          account_number?: string | null
+          amount?: number | null
+          bank_name?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          account_holder?: string | null
+          account_number?: string | null
+          amount?: number | null
+          bank_name?: string | null
+          created_at?: string | null
+          id?: string
+          status?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      add_daily_interest: { Args: never; Returns: undefined }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
