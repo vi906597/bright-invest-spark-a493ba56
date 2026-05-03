@@ -1,6 +1,4 @@
 import React, { useEffect, useState } from "react";
-import { Download } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
 import {
   User, Bell, Shield, CreditCard, FileText, HelpCircle,
@@ -236,7 +234,7 @@ const userBank = accounts.find(acc => acc.is_primary) || null;
 
 // 👇 YAHI PASTE KAR (function yaha rahega)
 const handleWithdraw = async () => {
-  if (!withdrawAmount || withdrawAmount <= 0) {
+  if (!withdrawAmount || Number(withdrawAmount) <= 0) {
     toast({ title: "Invalid amount", description: "Enter valid amount" });
     return;
   }
