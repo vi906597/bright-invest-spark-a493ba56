@@ -61,7 +61,7 @@ const TransactionHistory = () => {
     return true;
   });
 
-  const successSips = transactions.filter(t => t.status === "success" && t.type === "sip");
+  const successSips = transactions.filter(t => t.status === "success" && (t.type === "sip" || t.type === "deposit"));
   const totalInvested = successSips.reduce((s, t) => s + Number(t.amount), 0);
   const totalReturns = successSips.reduce((s, t) => s + Number(t.returns_amount || 0), 0);
   const currentValue = successSips.reduce((s, t) => s + Number(t.current_value || t.amount), 0);
