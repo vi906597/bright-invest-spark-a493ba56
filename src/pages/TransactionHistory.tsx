@@ -133,13 +133,14 @@ const TransactionHistory = () => {
               </p>
             </Card>
           ) : filtered.map(tx => {
-            const sc = statusConfig[tx.status];
+            const sc = statusConfig[tx.status] || defaultStatus;
             const returns = Number(tx.returns_amount || 0);
+            const wd = isWithdraw(tx);
             return (
               <Card key={tx.id} className="p-4 rounded-2xl shadow-card border-border hover:shadow-elevated transition-shadow">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === "withdrawal" ? "bg-amber-500/10" : "bg-secondary"}`}>
-                    {tx.type === "withdrawal" ? (
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${wd ? "bg-amber-500/10" : "bg-secondary"}`}>
+                    {wd ? (
                       <ArrowUpRight className="w-5 h-5 text-amber-500" />
                     ) : (
                       <ArrowDownLeft className="w-5 h-5 text-primary" />
@@ -148,8 +149,8 @@ const TransactionHistory = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-foreground text-sm truncate">{tx.plan_name}</p>
-                      <p className={`font-bold text-sm ${tx.type === "withdrawal" ? "text-amber-500" : "text-primary"}`}>
-                        {tx.type === "withdrawal" ? "-" : "+"}₹{Number(tx.amount).toLocaleString()}
+                      <p className={`font-bold text-sm ${wd ? "text-amber-500" : "text-primary"}`}>
+                        {wd ? "-" : "+"}₹{Number(tx.amount).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-1">
