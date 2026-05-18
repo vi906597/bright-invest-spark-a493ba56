@@ -12,18 +12,20 @@ type Transaction = {
   created_at: string;
   plan_name: string;
   amount: number;
-  status: "success" | "failed" | "pending";
-  type: "sip" | "withdrawal";
+  status: string;
+  type: string;
   razorpay_payment_id: string | null;
   returns_amount: number | null;
   current_value: number | null;
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; label: string; className: string }> = {
   success: { icon: CheckCircle2, label: "Success", className: "text-green-500 bg-green-500/10" },
   failed: { icon: XCircle, label: "Failed", className: "text-destructive bg-destructive/10" },
   pending: { icon: Clock, label: "Pending", className: "text-amber-500 bg-amber-500/10" },
 };
+const defaultStatus = { icon: Clock, label: "Unknown", className: "text-muted-foreground bg-secondary" };
+const isWithdraw = (t: Transaction) => t.type === "withdraw" || t.type === "withdrawal";
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
