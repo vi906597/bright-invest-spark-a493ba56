@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, FileCheck, CreditCard, Loader2, LogOut, CheckCircle2, XCircle, ExternalLink, RefreshCw, IndianRupee, TrendingUp, Coins } from "lucide-react";
+import { Shield, Users, FileCheck, CreditCard, Loader2, LogOut, CheckCircle2, XCircle, ExternalLink, RefreshCw, IndianRupee, TrendingUp, Coins, Search, Mail, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
