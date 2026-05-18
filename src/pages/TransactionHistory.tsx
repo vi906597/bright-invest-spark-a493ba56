@@ -12,22 +12,24 @@ type Transaction = {
   created_at: string;
   plan_name: string;
   amount: number;
-  status: "success" | "failed" | "pending";
-  type: "sip" | "withdrawal";
+  status: string;
+  type: string;
   razorpay_payment_id: string | null;
   returns_amount: number | null;
   current_value: number | null;
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { icon: any; label: string; className: string }> = {
   success: { icon: CheckCircle2, label: "Success", className: "text-green-500 bg-green-500/10" },
   failed: { icon: XCircle, label: "Failed", className: "text-destructive bg-destructive/10" },
   pending: { icon: Clock, label: "Pending", className: "text-amber-500 bg-amber-500/10" },
 };
+const defaultStatus = { icon: Clock, label: "Unknown", className: "text-muted-foreground bg-secondary" };
+const isWithdraw = (t: Transaction) => t.type === "withdraw" || t.type === "withdrawal";
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "success" | "failed" | "pending">("all");
+  const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -59,7 +61,7 @@ const TransactionHistory = () => {
     return true;
   });
 
-  const successSips = transactions.filter(t => t.status === "success" && t.type === "sip");
+  const successSips = transactions.filter(t => t.status === "success" && (t.type === "sip" || t.type === "deposit"));
   const totalInvested = successSips.reduce((s, t) => s + Number(t.amount), 0);
   const totalReturns = successSips.reduce((s, t) => s + Number(t.returns_amount || 0), 0);
   const currentValue = successSips.reduce((s, t) => s + Number(t.current_value || t.amount), 0);
@@ -131,13 +133,14 @@ const TransactionHistory = () => {
               </p>
             </Card>
           ) : filtered.map(tx => {
-            const sc = statusConfig[tx.status];
+            const sc = statusConfig[tx.status] || defaultStatus;
             const returns = Number(tx.returns_amount || 0);
+            const wd = isWithdraw(tx);
             return (
               <Card key={tx.id} className="p-4 rounded-2xl shadow-card border-border hover:shadow-elevated transition-shadow">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${tx.type === "withdrawal" ? "bg-amber-500/10" : "bg-secondary"}`}>
-                    {tx.type === "withdrawal" ? (
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${wd ? "bg-amber-500/10" : "bg-secondary"}`}>
+                    {wd ? (
                       <ArrowUpRight className="w-5 h-5 text-amber-500" />
                     ) : (
                       <ArrowDownLeft className="w-5 h-5 text-primary" />
@@ -146,8 +149,8 @@ const TransactionHistory = () => {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-foreground text-sm truncate">{tx.plan_name}</p>
-                      <p className={`font-bold text-sm ${tx.type === "withdrawal" ? "text-amber-500" : "text-primary"}`}>
-                        {tx.type === "withdrawal" ? "-" : "+"}₹{Number(tx.amount).toLocaleString()}
+                      <p className={`font-bold text-sm ${wd ? "text-amber-500" : "text-primary"}`}>
+                        {wd ? "-" : "+"}₹{Number(tx.amount).toLocaleString()}
                       </p>
                     </div>
                     <div className="flex items-center justify-between mt-1">

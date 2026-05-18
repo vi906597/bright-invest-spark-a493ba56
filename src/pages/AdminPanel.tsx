@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, FileCheck, CreditCard, Loader2, LogOut, CheckCircle2, XCircle, ExternalLink, RefreshCw, IndianRupee, TrendingUp, Coins } from "lucide-react";
+import { Shield, Users, FileCheck, CreditCard, Loader2, LogOut, CheckCircle2, XCircle, ExternalLink, RefreshCw, IndianRupee, TrendingUp, Coins, Search, Mail, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -47,6 +47,39 @@ const AdminPanel = () => {
   const [bulkPercent, setBulkPercent] = useState("");
   const [bulkNote, setBulkNote] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
+
+  // Email lookup
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupData, setLookupData] = useState<any>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositNote, setDepositNote] = useState("");
+  const [depositBusy, setDepositBusy] = useState(false);
+
+  const doLookup = async () => {
+    if (!lookupEmail.trim()) return;
+    setLookupBusy(true); setLookupData(null);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: { action: "lookup", email: lookupEmail.trim() },
+    });
+    setLookupBusy(false);
+    if (error || data?.error) return toast({ title: "Lookup failed", description: data?.error || error?.message, variant: "destructive" });
+    setLookupData(data);
+  };
+
+  const doDeposit = async () => {
+    if (!lookupData?.user?.id || !depositAmount) return;
+    setDepositBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: { action: "deposit", user_id: lookupData.user.id, amount: Number(depositAmount), note: depositNote || "Admin deposit", plan_name: "Manual Deposit" },
+    });
+    setDepositBusy(false);
+    if (error || data?.error) return toast({ title: "Deposit failed", description: data?.error || error?.message, variant: "destructive" });
+    toast({ title: "Deposit added", description: `₹${depositAmount} credited to ${lookupData.user.email}` });
+    setDepositAmount(""); setDepositNote("");
+    await doLookup();
+    loadAll();
+  };
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -206,13 +239,94 @@ const AdminPanel = () => {
           <Card className="p-4"><p className="text-xs text-muted-foreground">Users / Pending KYC</p><p className="text-2xl font-bold">{profiles.length} <span className="text-amber-500 text-base">/ {pendingCount}</span></p></Card>
         </div>
 
-        <Tabs defaultValue="kyc">
+        <Tabs defaultValue="lookup">
           <TabsList>
+            <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
             <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="banks">Banks</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="lookup">
+            <Card className="p-4 space-y-4">
+              <div className="flex gap-2">
+                <Input
+                  type="email"
+                  placeholder="user@example.com"
+                  value={lookupEmail}
+                  onChange={(e) => setLookupEmail(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && doLookup()}
+                />
+                <Button onClick={doLookup} disabled={lookupBusy}>
+                  {lookupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                  <span className="ml-1">Search</span>
+                </Button>
+              </div>
+
+              {lookupData && (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="p-3 rounded-lg bg-secondary">
+                      <p className="text-xs text-muted-foreground">User</p>
+                      <p className="font-semibold text-sm truncate">{lookupData.profile?.full_name || "—"}</p>
+                      <p className="text-xs text-muted-foreground truncate">{lookupData.user.email}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary">
+                      <p className="text-xs text-muted-foreground">Invested (net)</p>
+                      <p className="font-bold text-primary">₹{(lookupData.transactions || [])
+                        .filter((t: any) => t.status === "success")
+                        .reduce((s: number, t: any) => s + (t.type === "withdraw" ? -1 : 1) * Number(t.amount), 0)
+                        .toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary">
+                      <p className="text-xs text-muted-foreground">Interest Paid</p>
+                      <p className="font-bold text-green-500">₹{(lookupData.credits || []).reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-secondary">
+                      <p className="text-xs text-muted-foreground">KYC</p>
+                      <p className="font-semibold capitalize">{lookupData.kyc?.status || "Not submitted"}</p>
+                    </div>
+                  </div>
+
+                  <Card className="p-3 border-primary/30 bg-primary/5">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-1"><Plus className="w-4 h-4" />Add Deposit for this user</p>
+                    <div className="flex flex-wrap gap-2">
+                      <Input type="number" placeholder="Amount ₹" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} className="max-w-[160px]" />
+                      <Input placeholder="Note (optional)" value={depositNote} onChange={(e) => setDepositNote(e.target.value)} className="max-w-[260px]" />
+                      <Button onClick={doDeposit} disabled={depositBusy || !depositAmount} className="bg-green-600 hover:bg-green-700">
+                        {depositBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <IndianRupee className="w-4 h-4" />}
+                        <span className="ml-1">Credit Deposit</span>
+                      </Button>
+                    </div>
+                  </Card>
+
+                  <div>
+                    <p className="font-semibold text-sm mb-2">Transactions ({lookupData.transactions?.length || 0})</p>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Plan</TableHead><TableHead>Type</TableHead><TableHead>Amount</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                          {(lookupData.transactions || []).slice(0, 30).map((t: any) => (
+                            <TableRow key={t.id}>
+                              <TableCell className="text-xs">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell className="text-xs">{t.plan_name}</TableCell>
+                              <TableCell className="text-xs capitalize">{t.type}</TableCell>
+                              <TableCell className="text-xs">₹{Number(t.amount).toLocaleString()}</TableCell>
+                              <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${t.status === "success" ? "bg-green-500/10 text-green-500" : t.status === "failed" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{t.status}</span></TableCell>
+                            </TableRow>
+                          ))}
+                          {(!lookupData.transactions || lookupData.transactions.length === 0) && (
+                            <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground text-xs">No transactions</TableCell></TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </Card>
+          </TabsContent>
 
           <TabsContent value="kyc">
             <Card className="p-4 overflow-x-auto">
