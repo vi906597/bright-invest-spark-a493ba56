@@ -1,19 +1,19 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Sparkles, ArrowDownLeft, ArrowUpRight, Search, Calendar, CheckCircle2, XCircle, Clock, TrendingUp, Loader2 } from "lucide-react";
+import { ArrowLeft, Sparkles, ArrowDownLeft, ArrowUpRight, Search, Calendar, CheckCircle2, XCircle, Clock, TrendingUp, Loader2, Coins } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import BottomNav from "@/components/BottomNav";
 import { supabase } from "@/integrations/supabase/client";
 
-type Transaction = {
+type Item = {
   id: string;
   created_at: string;
   plan_name: string;
   amount: number;
   status: string;
-  type: string;
+  type: string; // sip, deposit, withdraw, interest
   razorpay_payment_id: string | null;
   returns_amount: number | null;
   current_value: number | null;
@@ -25,13 +25,15 @@ const statusConfig: Record<string, { icon: any; label: string; className: string
   pending: { icon: Clock, label: "Pending", className: "text-amber-500 bg-amber-500/10" },
 };
 const defaultStatus = { icon: Clock, label: "Unknown", className: "text-muted-foreground bg-secondary" };
-const isWithdraw = (t: Transaction) => t.type === "withdraw" || t.type === "withdrawal";
+const normStatus = (s: string) => (s || "").toLowerCase();
+const isOutflow = (t: Item) => t.type === "withdraw" || t.type === "withdrawal";
+const isInvest = (t: Item) => t.type === "sip" || t.type === "deposit";
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -41,18 +43,38 @@ const TransactionHistory = () => {
         navigate("/");
         return;
       }
-      const { data, error } = await supabase
-        .from("transactions")
-        .select("id, created_at, plan_name, amount, status, type, razorpay_payment_id, returns_amount, current_value")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (!error && data) setTransactions(data as Transaction[]);
+      const [txRes, crRes] = await Promise.all([
+        supabase
+          .from("transactions")
+          .select("id, created_at, plan_name, amount, status, type, razorpay_payment_id, returns_amount, current_value")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+        supabase
+          .from("daily_interest_credits")
+          .select("id, amount, credit_date, note, created_at")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false }),
+      ]);
+      const txs: Item[] = (txRes.data || []).map((t: any) => ({ ...t, status: normStatus(t.status) }));
+      const credits: Item[] = (crRes.data || []).map((c: any) => ({
+        id: c.id,
+        created_at: c.created_at || c.credit_date,
+        plan_name: c.note || "Daily Interest",
+        amount: Number(c.amount),
+        status: "success",
+        type: "interest",
+        razorpay_payment_id: null,
+        returns_amount: null,
+        current_value: null,
+      }));
+      const merged = [...txs, ...credits].sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      setItems(merged);
       setLoading(false);
     };
     load();
   }, [navigate]);
 
-  const filtered = transactions.filter((t) => {
+  const filtered = items.filter((t) => {
     if (filter !== "all" && t.status !== filter) return false;
     if (search) {
       const q = search.toLowerCase();
@@ -61,10 +83,15 @@ const TransactionHistory = () => {
     return true;
   });
 
-  const successSips = transactions.filter(t => t.status === "success" && (t.type === "sip" || t.type === "deposit"));
-  const totalInvested = successSips.reduce((s, t) => s + Number(t.amount), 0);
-  const totalReturns = successSips.reduce((s, t) => s + Number(t.returns_amount || 0), 0);
-  const currentValue = successSips.reduce((s, t) => s + Number(t.current_value || t.amount), 0);
+  const successInvest = items.filter(t => t.status === "success" && isInvest(t));
+  const successWithdraw = items.filter(t => t.status === "success" && isOutflow(t));
+  const interestPaid = items.filter(t => t.type === "interest").reduce((s, t) => s + Number(t.amount), 0);
+  const totalInvested = Math.max(0,
+    successInvest.reduce((s, t) => s + Number(t.amount), 0) -
+    successWithdraw.reduce((s, t) => s + Number(t.amount), 0)
+  );
+  const totalReturns = successInvest.reduce((s, t) => s + Number(t.returns_amount || 0), 0) + interestPaid;
+  const currentValue = totalInvested + totalReturns;
 
   return (
     <div className="min-h-screen bg-background">
