@@ -156,13 +156,14 @@ const TransactionHistory = () => {
           ) : filtered.length === 0 ? (
             <Card className="p-8 rounded-2xl shadow-card text-center">
               <p className="text-muted-foreground">
-                {transactions.length === 0 ? "Abhi tak koi transaction nahi. Pehla SIP shuru karein!" : "No transactions found"}
+                {items.length === 0 ? "Abhi tak koi transaction nahi. Pehla SIP shuru karein!" : "No transactions found"}
               </p>
             </Card>
           ) : filtered.map(tx => {
             const sc = statusConfig[tx.status] || defaultStatus;
             const returns = Number(tx.returns_amount || 0);
-            const wd = isWithdraw(tx);
+            const wd = isOutflow(tx);
+            const isInterest = tx.type === "interest";
             return (
               <Card key={tx.id} className="p-4 rounded-2xl shadow-card border-border hover:shadow-elevated transition-shadow">
                 <div className="flex items-center gap-3">
