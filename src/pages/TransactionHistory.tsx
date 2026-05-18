@@ -29,7 +29,7 @@ const isWithdraw = (t: Transaction) => t.type === "withdraw" || t.type === "with
 
 const TransactionHistory = () => {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<"all" | "success" | "failed" | "pending">("all");
+  const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
