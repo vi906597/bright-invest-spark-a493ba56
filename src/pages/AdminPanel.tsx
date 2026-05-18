@@ -48,6 +48,39 @@ const AdminPanel = () => {
   const [bulkNote, setBulkNote] = useState("");
   const [bulkBusy, setBulkBusy] = useState(false);
 
+  // Email lookup
+  const [lookupEmail, setLookupEmail] = useState("");
+  const [lookupBusy, setLookupBusy] = useState(false);
+  const [lookupData, setLookupData] = useState<any>(null);
+  const [depositAmount, setDepositAmount] = useState("");
+  const [depositNote, setDepositNote] = useState("");
+  const [depositBusy, setDepositBusy] = useState(false);
+
+  const doLookup = async () => {
+    if (!lookupEmail.trim()) return;
+    setLookupBusy(true); setLookupData(null);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: { action: "lookup", email: lookupEmail.trim() },
+    });
+    setLookupBusy(false);
+    if (error || data?.error) return toast({ title: "Lookup failed", description: data?.error || error?.message, variant: "destructive" });
+    setLookupData(data);
+  };
+
+  const doDeposit = async () => {
+    if (!lookupData?.user?.id || !depositAmount) return;
+    setDepositBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: { action: "deposit", user_id: lookupData.user.id, amount: Number(depositAmount), note: depositNote || "Admin deposit", plan_name: "Manual Deposit" },
+    });
+    setDepositBusy(false);
+    if (error || data?.error) return toast({ title: "Deposit failed", description: data?.error || error?.message, variant: "destructive" });
+    toast({ title: "Deposit added", description: `₹${depositAmount} credited to ${lookupData.user.email}` });
+    setDepositAmount(""); setDepositNote("");
+    await doLookup();
+    loadAll();
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
