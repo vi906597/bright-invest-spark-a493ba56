@@ -56,6 +56,41 @@ const AdminPanel = () => {
   const [depositNote, setDepositNote] = useState("");
   const [depositBusy, setDepositBusy] = useState(false);
 
+  // Add SIP plan
+  const STANDARD_PLANS = [
+    { amount: 100, name: "Stability SIP" },
+    { amount: 500, name: "Starter SIP" },
+    { amount: 1000, name: "Growth SIP" },
+    { amount: 2500, name: "Power SIP" },
+    { amount: 5000, name: "Premium SIP" },
+    { amount: 10000, name: "Growth Booster SIP" },
+  ];
+  const [sipPlan, setSipPlan] = useState(STANDARD_PLANS[1].name);
+  const [sipAmount, setSipAmount] = useState(String(STANDARD_PLANS[1].amount));
+  const [sipDate, setSipDate] = useState("");
+  const [sipBusy, setSipBusy] = useState(false);
+
+  const doAddSip = async () => {
+    if (!lookupData?.user?.id || !sipAmount) return;
+    setSipBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: {
+        action: "add_sip",
+        user_id: lookupData.user.id,
+        amount: Number(sipAmount),
+        plan_name: sipPlan,
+        note: `Admin SIP - ${sipPlan}`,
+        created_at: sipDate ? new Date(sipDate).toISOString() : undefined,
+      },
+    });
+    setSipBusy(false);
+    if (error || data?.error) return toast({ title: "Add SIP failed", description: data?.error || error?.message, variant: "destructive" });
+    toast({ title: "SIP added", description: `${sipPlan} ₹${sipAmount} added to ${lookupData.user.email}` });
+    setSipAmount(String(STANDARD_PLANS[1].amount)); setSipDate("");
+    await doLookup();
+    loadAll();
+  };
+
   const doLookup = async () => {
     if (!lookupEmail.trim()) return;
     setLookupBusy(true); setLookupData(null);
@@ -300,6 +335,32 @@ const AdminPanel = () => {
                       </Button>
                     </div>
                   </Card>
+
+                  <Card className="p-3 border-accent/30 bg-accent/5">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" />Add SIP Plan for this user</p>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        value={sipPlan}
+                        onChange={(e) => {
+                          const p = STANDARD_PLANS.find(x => x.name === e.target.value);
+                          setSipPlan(e.target.value);
+                          if (p) setSipAmount(String(p.amount));
+                        }}
+                        className="h-9 px-2 rounded-md border border-input bg-background text-sm"
+                      >
+                        {STANDARD_PLANS.map(p => <option key={p.name} value={p.name}>{p.name} (₹{p.amount})</option>)}
+                        <option value="Custom SIP">Custom SIP</option>
+                      </select>
+                      <Input type="number" placeholder="Amount ₹" value={sipAmount} onChange={(e) => setSipAmount(e.target.value)} className="max-w-[140px]" />
+                      <Input type="date" value={sipDate} onChange={(e) => setSipDate(e.target.value)} className="max-w-[160px]" title="Invest date (optional, defaults to today)" />
+                      <Button onClick={doAddSip} disabled={sipBusy || !sipAmount} className="bg-primary hover:bg-primary/90">
+                        {sipBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        <span className="ml-1">Add SIP</span>
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">Backdate karne ke liye date select karein — returns us din se calculate honge.</p>
+                  </Card>
+
 
                   <div>
                     <p className="font-semibold text-sm mb-2">Transactions ({lookupData.transactions?.length || 0})</p>
