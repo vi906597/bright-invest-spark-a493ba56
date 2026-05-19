@@ -163,28 +163,49 @@ const Portfolio = () => {
         0
       );
 
+      const now = Date.now();
+      // Time-weighted: each txn contributes amount * days_invested
+      const txnWeight = (t: Txn) => {
+        const days = Math.max(
+          1,
+          Math.floor((now - new Date(t.created_at).getTime()) / 86400000)
+        );
+        return Number(t.amount) * days;
+      };
+      const totalWeight = data.reduce((s, t) => s + txnWeight(t), 0);
+
       const result: Holding[] = Array.from(groups.entries()).map(
         ([key, g]) => {
           let cum = 0;
           const monthlyData: number[] = [];
           let invested = 0;
+          let weightSum = 0;
 
           for (const t of g.txns) {
             const a = Number(t.amount);
             invested += a;
             cum += a;
             monthlyData.push(cum);
+            weightSum += txnWeight(t);
           }
 
           const interestShare =
-            totalInvestedAll > 0
-              ? (invested / totalInvestedAll) * totalInterest
-              : 0;
+            totalWeight > 0 ? (weightSum / totalWeight) * totalInterest : 0;
 
           const currentValue = invested + interestShare;
 
           const ret =
             invested > 0 ? ((currentValue - invested) / invested) * 100 : 0;
+
+          // Distribute interest to each txn by its own weight (within group)
+          const txnsWithValue = g.txns.map((t) => {
+            const w = txnWeight(t);
+            const share = weightSum > 0 ? (w / weightSum) * interestShare : 0;
+            return {
+              ...t,
+              current_value: Number(t.amount) + share,
+            };
+          });
 
           return {
             key,
@@ -196,7 +217,7 @@ const Portfolio = () => {
             returnPercent: Number(ret.toFixed(1)),
             monthlyData,
             isOther: g.isOther,
-            txns: g.txns,
+            txns: txnsWithValue,
           };
         }
       );
