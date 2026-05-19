@@ -63,23 +63,27 @@ Deno.serve(async (req) => {
       }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
-    if (action === "deposit") {
+    if (action === "deposit" || action === "add_sip") {
       const targetUserId = body.user_id as string;
       const amount = Number(body.amount);
-      const note = (body.note as string) || "Admin deposit";
-      const planName = (body.plan_name as string) || "Manual Deposit";
+      const note = (body.note as string) || (action === "add_sip" ? "Admin SIP" : "Admin deposit");
+      const planName = (body.plan_name as string) || (action === "add_sip" ? "Admin SIP" : "Manual Deposit");
+      const txType = action === "add_sip" ? "sip" : ((body.type as string) || "deposit");
+      const createdAt = body.created_at as string | undefined;
       if (!targetUserId || !amount || amount <= 0) {
         return new Response(JSON.stringify({ error: "user_id and positive amount required" }), { status: 400, headers: { ...cors, "Content-Type": "application/json" } });
       }
-      const { data, error } = await admin.from("transactions").insert({
+      const payload: any = {
         user_id: targetUserId,
         plan_name: planName,
         amount,
-        type: "deposit",
+        type: txType,
         status: "success",
         notes: note,
         razorpay_payment_id: `ADMIN-${Date.now()}`,
-      }).select().single();
+      };
+      if (createdAt) payload.created_at = createdAt;
+      const { data, error } = await admin.from("transactions").insert(payload).select().single();
       if (error) return new Response(JSON.stringify({ error: error.message }), { status: 500, headers: { ...cors, "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ success: true, transaction: data }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
