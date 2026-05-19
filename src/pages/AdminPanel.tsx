@@ -56,6 +56,41 @@ const AdminPanel = () => {
   const [depositNote, setDepositNote] = useState("");
   const [depositBusy, setDepositBusy] = useState(false);
 
+  // Add SIP plan
+  const STANDARD_PLANS = [
+    { amount: 100, name: "Stability SIP" },
+    { amount: 500, name: "Starter SIP" },
+    { amount: 1000, name: "Growth SIP" },
+    { amount: 2500, name: "Power SIP" },
+    { amount: 5000, name: "Premium SIP" },
+    { amount: 10000, name: "Growth Booster SIP" },
+  ];
+  const [sipPlan, setSipPlan] = useState(STANDARD_PLANS[1].name);
+  const [sipAmount, setSipAmount] = useState(String(STANDARD_PLANS[1].amount));
+  const [sipDate, setSipDate] = useState("");
+  const [sipBusy, setSipBusy] = useState(false);
+
+  const doAddSip = async () => {
+    if (!lookupData?.user?.id || !sipAmount) return;
+    setSipBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", {
+      body: {
+        action: "add_sip",
+        user_id: lookupData.user.id,
+        amount: Number(sipAmount),
+        plan_name: sipPlan,
+        note: `Admin SIP - ${sipPlan}`,
+        created_at: sipDate ? new Date(sipDate).toISOString() : undefined,
+      },
+    });
+    setSipBusy(false);
+    if (error || data?.error) return toast({ title: "Add SIP failed", description: data?.error || error?.message, variant: "destructive" });
+    toast({ title: "SIP added", description: `${sipPlan} ₹${sipAmount} added to ${lookupData.user.email}` });
+    setSipAmount(String(STANDARD_PLANS[1].amount)); setSipDate("");
+    await doLookup();
+    loadAll();
+  };
+
   const doLookup = async () => {
     if (!lookupEmail.trim()) return;
     setLookupBusy(true); setLookupData(null);
