@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import AuthPage from "./pages/AuthPage";
+import LandingPage from "./pages/LandingPage";
 import Dashboard from "./pages/Dashboard";
 import SIPCalculator from "./pages/SIPCalculator";
 import TransactionHistory from "./pages/TransactionHistory";
@@ -24,8 +25,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          {/* ✅ Landing हटाया */}
-          <Route path="/" element={<AuthPage />} />
+          <Route path="/" element={<LandingPage />} />
+          <Route path="/auth" element={<AuthPage />} />
 
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/calculator" element={<SIPCalculator />} />
