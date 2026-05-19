@@ -336,6 +336,32 @@ const AdminPanel = () => {
                     </div>
                   </Card>
 
+                  <Card className="p-3 border-accent/30 bg-accent/5">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-1"><TrendingUp className="w-4 h-4" />Add SIP Plan for this user</p>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      <select
+                        value={sipPlan}
+                        onChange={(e) => {
+                          const p = STANDARD_PLANS.find(x => x.name === e.target.value);
+                          setSipPlan(e.target.value);
+                          if (p) setSipAmount(String(p.amount));
+                        }}
+                        className="h-9 px-2 rounded-md border border-input bg-background text-sm"
+                      >
+                        {STANDARD_PLANS.map(p => <option key={p.name} value={p.name}>{p.name} (₹{p.amount})</option>)}
+                        <option value="Custom SIP">Custom SIP</option>
+                      </select>
+                      <Input type="number" placeholder="Amount ₹" value={sipAmount} onChange={(e) => setSipAmount(e.target.value)} className="max-w-[140px]" />
+                      <Input type="date" value={sipDate} onChange={(e) => setSipDate(e.target.value)} className="max-w-[160px]" title="Invest date (optional, defaults to today)" />
+                      <Button onClick={doAddSip} disabled={sipBusy || !sipAmount} className="bg-primary hover:bg-primary/90">
+                        {sipBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                        <span className="ml-1">Add SIP</span>
+                      </Button>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground mt-2">Backdate karne ke liye date select karein — returns us din se calculate honge.</p>
+                  </Card>
+
+
                   <div>
                     <p className="font-semibold text-sm mb-2">Transactions ({lookupData.transactions?.length || 0})</p>
                     <div className="overflow-x-auto">
