@@ -20,6 +20,7 @@ import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
+import UpiPaymentDialog from "@/components/UpiPaymentDialog";
 
 const sipPlans = [
   { id: 1, name: "Stability SIP", amount: 100, returns: "8-12%", risk: "Low", icon: Shield, popular: false },
@@ -39,6 +40,10 @@ const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [userName, setUserName] = useState("Investor");
+  const [payOpen, setPayOpen] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const [payPlan, setPayPlan] = useState("");
+  const [userId, setUserId] = useState<string>("");
   const [stats, setStats] = useState({
     invested: 0,
     currentValue: 0,
@@ -106,28 +111,12 @@ const Dashboard = () => {
         return;
       }
 
+      setUserId(authUser.id);
       setUserName(
         authUser.user_metadata?.full_name ||
           authUser.email?.split("@")[0] ||
           "Investor"
       );
-
-      // Check pending Bharat4u order
-      const pending = localStorage.getItem("pending_b4u_order");
-      if (pending) {
-        try {
-          const { data } = await supabase.functions.invoke("bharat4u-check-status", {
-            body: { order_id: pending },
-          });
-          if (data?.status === "success") {
-            toast({ title: "Payment Successful 🎉", description: `UTR: ${data.utr || "-"}` });
-            localStorage.removeItem("pending_b4u_order");
-          } else if (data?.status === "failed") {
-            toast({ title: "Payment Failed", variant: "destructive" });
-            localStorage.removeItem("pending_b4u_order");
-          }
-        } catch {}
-      }
 
       await loadStats(authUser.id);
     };
@@ -140,40 +129,16 @@ const Dashboard = () => {
     navigate("/");
   };
 
-  const startBharatPayment = async (amount: number, planName: string) => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("phone")
-        .eq("user_id", user?.id || "")
-        .maybeSingle();
-
-      const { data, error } = await supabase.functions.invoke("bharat4u-create-order", {
-        body: { amount, plan_name: planName, customer_mobile: profile?.phone || "9999999999" },
-      });
-
-      if (error || !data?.payment_url) {
-        toast({
-          title: "Payment Error",
-          description: data?.error || error?.message || "Could not create order",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      // Save order id for status check on return
-      localStorage.setItem("pending_b4u_order", data.order_id);
-      window.location.href = data.payment_url;
-    } catch (e: any) {
-      toast({ title: "Error", description: e?.message || "Failed", variant: "destructive" });
-    }
+  const openUpiPay = (amount: number, planName: string) => {
+    setPayAmount(amount);
+    setPayPlan(planName);
+    setPayOpen(true);
   };
 
   const handlePayment = () => {
     const plan = sipPlans.find((p) => p.id === selectedPlan);
     if (!plan) return;
-    startBharatPayment(plan.amount, plan.name);
+    openUpiPay(plan.amount, plan.name);
   };
 
   const handleCustomPay = () => {
@@ -186,7 +151,7 @@ const Dashboard = () => {
       });
       return;
     }
-    startBharatPayment(amt, "Custom SIP");
+    openUpiPay(amt, "Custom SIP");
   };
 
   return (
@@ -385,6 +350,14 @@ const Dashboard = () => {
       </main>
 
       <BottomNav />
+
+      <UpiPaymentDialog
+        open={payOpen}
+        onOpenChange={setPayOpen}
+        amount={payAmount}
+        planName={payPlan}
+        onSubmitted={() => userId && loadStats(userId)}
+      />
     </div>
   );
 };
