@@ -350,6 +350,14 @@ const Dashboard = () => {
       </main>
 
       <BottomNav />
+
+      <UpiPaymentDialog
+        open={payOpen}
+        onOpenChange={setPayOpen}
+        amount={payAmount}
+        planName={payPlan}
+        onSubmitted={() => userId && loadStats(userId)}
+      />
     </div>
   );
 };
