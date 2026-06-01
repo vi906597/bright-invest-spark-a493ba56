@@ -40,6 +40,10 @@ const Dashboard = () => {
   const [selectedPlan, setSelectedPlan] = useState<number | null>(null);
   const [customAmount, setCustomAmount] = useState("");
   const [userName, setUserName] = useState("Investor");
+  const [payOpen, setPayOpen] = useState(false);
+  const [payAmount, setPayAmount] = useState(0);
+  const [payPlan, setPayPlan] = useState("");
+  const [userId, setUserId] = useState<string>("");
   const [stats, setStats] = useState({
     invested: 0,
     currentValue: 0,
