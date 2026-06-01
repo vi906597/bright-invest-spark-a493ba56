@@ -2,7 +2,7 @@ import React, { useMemo, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Loader2, Clock, CheckCircle2 } from "lucide-react";
+import { Loader2, Clock, CheckCircle2, Download } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -72,6 +72,23 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
     onSubmitted?.();
   };
 
+  const downloadQr = async () => {
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `zypeus-qr-${amount}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      toast({ title: "Download failed", variant: "destructive" });
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent className="rounded-2xl max-w-md">
@@ -96,6 +113,17 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
               <div className="p-4 rounded-2xl border-2 border-primary/20 bg-white shadow-lg">
                 <img src={qrUrl} alt="UPI QR" className="w-64 h-64 sm:w-72 sm:h-72 rounded-lg" />
               </div>
+            </div>
+
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadQr}
+                className="rounded-full gap-2 text-xs"
+              >
+                <Download className="w-3.5 h-3.5" /> Save QR to Phone
+              </Button>
             </div>
 
             <div className="text-sm text-center text-muted-foreground leading-relaxed">
