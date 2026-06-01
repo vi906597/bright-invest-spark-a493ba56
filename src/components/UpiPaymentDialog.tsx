@@ -36,7 +36,6 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
 
   const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(upiLink)}`;
 
-
   const reset = () => {
     setUtr("");
     setSubmitted(false);
