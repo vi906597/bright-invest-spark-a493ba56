@@ -34,7 +34,7 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
     return `upi://pay?${params.toString()}`;
   }, [amount, planName]);
 
-  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=260x260&data=${encodeURIComponent(upiLink)}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=${encodeURIComponent(upiLink)}`;
 
   const copyUpi = () => {
     navigator.clipboard.writeText(UPI_ID);
