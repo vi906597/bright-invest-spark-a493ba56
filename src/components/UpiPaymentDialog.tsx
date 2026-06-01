@@ -98,22 +98,13 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
         ) : (
           <div className="space-y-4">
             <div className="flex justify-center">
-              <img src={qrUrl} alt="UPI QR" className="w-56 h-56 rounded-xl border border-border bg-white p-2" />
+              <div className="p-4 rounded-2xl border-2 border-primary/20 bg-white shadow-lg">
+                <img src={qrUrl} alt="UPI QR" className="w-64 h-64 sm:w-72 sm:h-72 rounded-lg" />
+              </div>
             </div>
 
-            <button
-              onClick={copyUpi}
-              className="w-full flex items-center justify-between p-3 rounded-xl border border-border hover:bg-secondary/50"
-            >
-              <div className="text-left">
-                <p className="text-xs text-muted-foreground">UPI ID</p>
-                <p className="font-mono font-semibold">{UPI_ID}</p>
-              </div>
-              <Copy className="w-4 h-4" />
-            </button>
-
-            <div className="text-xs text-muted-foreground leading-relaxed">
-              Scan QR with any UPI app (GPay, PhonePe, Paytm) and pay <b>₹{amount.toLocaleString()}</b>. After payment, enter the UTR / transaction ID below.
+            <div className="text-sm text-center text-muted-foreground leading-relaxed">
+              Scan with any UPI app (GPay, PhonePe, Paytm) and pay <b>₹{amount.toLocaleString()}</b>
             </div>
 
             <div>
