@@ -115,6 +115,17 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
               </div>
             </div>
 
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={downloadQr}
+                className="rounded-full gap-2 text-xs"
+              >
+                <Download className="w-3.5 h-3.5" /> Save QR to Phone
+              </Button>
+            </div>
+
             <div className="text-sm text-center text-muted-foreground leading-relaxed">
               Scan with any UPI app (GPay, PhonePe, Paytm) and pay <b>₹{amount.toLocaleString()}</b>
             </div>
