@@ -140,6 +140,16 @@ const AdminPanel = () => {
 
   const [lookupRejectReason, setLookupRejectReason] = useState("");
 
+  const [pendingKycs, setPendingKycs] = useState<any[]>([]);
+  const [pendingKycsBusy, setPendingKycsBusy] = useState(false);
+  const loadPendingKycs = async () => {
+    setPendingKycsBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", { body: { action: "pending_kycs" } });
+    setPendingKycsBusy(false);
+    if (error || data?.error) return toast({ title: "Failed to load pending KYC", description: data?.error || error?.message, variant: "destructive" });
+    setPendingKycs(data?.kycs || []);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
