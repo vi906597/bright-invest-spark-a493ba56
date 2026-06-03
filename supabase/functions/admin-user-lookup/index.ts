@@ -63,6 +63,29 @@ Deno.serve(async (req) => {
       }), { headers: { ...cors, "Content-Type": "application/json" } });
     }
 
+    if (action === "pending_kycs") {
+      const { data: kycs } = await admin.from("kyc_submissions").select("*").eq("status", "pending").order("submitted_at", { ascending: false });
+      const list = kycs || [];
+      // fetch emails for these users
+      const emails: Record<string, string> = {};
+      let page = 1;
+      while (page <= 20) {
+        const { data, error } = await admin.auth.admin.listUsers({ page, perPage: 200 });
+        if (error) break;
+        for (const u of data.users) emails[u.id] = u.email || "";
+        if (data.users.length < 200) break;
+        page++;
+      }
+      const withEmails = list.map((k: any) => ({ ...k, email: emails[k.user_id] || "" }));
+      return new Response(JSON.stringify({ kycs: withEmails }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
+    if (action === "check_kyc") {
+      const targetUserId = body.user_id as string;
+      const { data } = await admin.from("kyc_submissions").select("status").eq("user_id", targetUserId).maybeSingle();
+      return new Response(JSON.stringify({ status: data?.status || "none" }), { headers: { ...cors, "Content-Type": "application/json" } });
+    }
+
     if (action === "deposit" || action === "add_sip") {
       const targetUserId = body.user_id as string;
       const amount = Number(body.amount);

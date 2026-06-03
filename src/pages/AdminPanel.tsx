@@ -140,6 +140,16 @@ const AdminPanel = () => {
 
   const [lookupRejectReason, setLookupRejectReason] = useState("");
 
+  const [pendingKycs, setPendingKycs] = useState<any[]>([]);
+  const [pendingKycsBusy, setPendingKycsBusy] = useState(false);
+  const loadPendingKycs = async () => {
+    setPendingKycsBusy(true);
+    const { data, error } = await supabase.functions.invoke("admin-user-lookup", { body: { action: "pending_kycs" } });
+    setPendingKycsBusy(false);
+    if (error || data?.error) return toast({ title: "Failed to load pending KYC", description: data?.error || error?.message, variant: "destructive" });
+    setPendingKycs(data?.kycs || []);
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
@@ -162,7 +172,7 @@ const AdminPanel = () => {
     if (c.data) setCredits(c.data as any);
   };
 
-  useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) { loadAll(); loadPendingKycs(); } }, [isAdmin]);
 
   const signedUrl = async (path: string | null) => {
     if (!path) return null;
@@ -299,10 +309,11 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="payments">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="payments"><IndianRupee className="w-4 h-4 mr-1" />Pending Payments {txs.filter(t => t.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{txs.filter(t => t.status === "pending").length}</span>}</TabsTrigger>
+            <TabsTrigger value="pending-kyc"><FileCheck className="w-4 h-4 mr-1" />Pending KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
             <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
-            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
+            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />All KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="banks">Banks</TabsTrigger>
@@ -313,11 +324,13 @@ const AdminPanel = () => {
               <p className="text-sm text-muted-foreground mb-3">UPI payments with UTR awaiting verification. Approve to credit user's portfolio.</p>
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>KYC</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {txs.filter(t => t.status === "pending").map(t => {
                     const prof = profiles.find(p => p.user_id === t.user_id);
+                    const userKyc = kycs.find(k => k.user_id === t.user_id);
+                    const kycStatus = userKyc?.status || "none";
                     return (
                       <TableRow key={t.id}>
                         <TableCell className="text-xs">{new Date(t.created_at).toLocaleString()}</TableCell>
@@ -325,12 +338,17 @@ const AdminPanel = () => {
                           <p className="font-medium">{prof?.full_name || "—"}</p>
                           <p className="text-muted-foreground">{prof?.phone || ""}</p>
                         </TableCell>
+                        <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${kycStatus === "approved" ? "bg-green-500/10 text-green-500" : kycStatus === "rejected" ? "bg-destructive/10 text-destructive" : kycStatus === "pending" ? "bg-amber-500/10 text-amber-500" : "bg-muted text-muted-foreground"}`}>{kycStatus}</span></TableCell>
                         <TableCell className="text-xs">{t.plan_name}</TableCell>
                         <TableCell className="font-bold text-primary">₹{Number(t.amount).toLocaleString()}</TableCell>
                         <TableCell className="text-xs max-w-[260px] break-words">{(t as any).notes || "—"}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
+                              const userKyc = kycs.find(k => k.user_id === t.user_id);
+                              if (!userKyc || userKyc.status !== "approved") {
+                                return toast({ title: "KYC not approved", description: `Cannot approve payment — user's KYC status: ${userKyc?.status || "not submitted"}. Approve KYC first.`, variant: "destructive" });
+                              }
                               const { error } = await supabase.from("transactions").update({ status: "success" }).eq("id", t.id);
                               if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
                               toast({ title: "Payment approved ✓", description: `₹${t.amount} credited` });
@@ -348,12 +366,70 @@ const AdminPanel = () => {
                     );
                   })}
                   {txs.filter(t => t.status === "pending").length === 0 && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No pending payments</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No pending payments</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
+
+          <TabsContent value="pending-kyc">
+            <Card className="p-4 overflow-x-auto">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-muted-foreground">Pending KYC submissions awaiting verification. Approve to unlock the user's payments.</p>
+                <Button size="sm" variant="outline" onClick={loadPendingKycs} disabled={pendingKycsBusy}>
+                  {pendingKycsBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                  <span className="ml-1">Refresh</span>
+                </Button>
+              </div>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Submitted</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>PAN</TableHead><TableHead>Aadhaar</TableHead><TableHead>Docs</TableHead><TableHead>Action</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {pendingKycs.map((k: any) => (
+                    <TableRow key={k.id}>
+                      <TableCell className="text-xs">{new Date(k.submitted_at).toLocaleString()}</TableCell>
+                      <TableCell className="text-xs font-medium">{k.full_name_kyc}</TableCell>
+                      <TableCell className="text-xs">{k.email || "—"}</TableCell>
+                      <TableCell className="font-mono text-xs">{k.pan_number}</TableCell>
+                      <TableCell className="font-mono text-xs">****{k.aadhaar_number.slice(-4)}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1 flex-wrap">
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.pan_document_url)}>PAN</Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.aadhaar_front_url)}>Aad-F</Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.aadhaar_back_url)}>Aad-B</Button>
+                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.selfie_url)}>Selfie</Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
+                            const { error } = await supabase.from("kyc_submissions").update({ status: "approved", rejection_reason: null, reviewed_at: new Date().toISOString() }).eq("id", k.id);
+                            if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+                            toast({ title: "KYC approved ✓", description: k.email || k.full_name_kyc });
+                            loadPendingKycs(); loadAll();
+                          }}><CheckCircle2 className="w-3 h-3 mr-1" />Approve</Button>
+                          <Button size="sm" variant="destructive" className="h-8" onClick={async () => {
+                            const reason = window.prompt("Rejection reason:", "Documents unclear");
+                            if (!reason) return;
+                            const { error } = await supabase.from("kyc_submissions").update({ status: "rejected", rejection_reason: reason, reviewed_at: new Date().toISOString() }).eq("id", k.id);
+                            if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+                            toast({ title: "KYC rejected" });
+                            loadPendingKycs(); loadAll();
+                          }}><XCircle className="w-3 h-3 mr-1" />Reject</Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {pendingKycs.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No pending KYC submissions</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
 
 
           <TabsContent value="lookup">
