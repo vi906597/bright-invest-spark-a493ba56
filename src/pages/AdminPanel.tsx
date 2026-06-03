@@ -116,6 +116,30 @@ const AdminPanel = () => {
     loadAll();
   };
 
+  const lookupKycDecision = async (status: "approved" | "rejected", reason?: string) => {
+    if (!lookupData?.kyc?.id) return;
+    const { error } = await supabase.from("kyc_submissions").update({
+      status,
+      rejection_reason: status === "rejected" ? (reason || "Rejected by admin") : null,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", lookupData.kyc.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: `KYC ${status}` });
+    await doLookup();
+    loadAll();
+  };
+
+  const verifyPhone = async (verified: boolean) => {
+    if (!lookupData?.user?.id) return;
+    const { error } = await supabase.from("profiles").update({ phone_verified: verified }).eq("user_id", lookupData.user.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: verified ? "Phone verified ✓" : "Phone unverified" });
+    await doLookup();
+    loadAll();
+  };
+
+  const [lookupRejectReason, setLookupRejectReason] = useState("");
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
