@@ -172,7 +172,7 @@ const AdminPanel = () => {
     if (c.data) setCredits(c.data as any);
   };
 
-  useEffect(() => { if (isAdmin) loadAll(); }, [isAdmin]);
+  useEffect(() => { if (isAdmin) { loadAll(); loadPendingKycs(); } }, [isAdmin]);
 
   const signedUrl = async (path: string | null) => {
     if (!path) return null;
