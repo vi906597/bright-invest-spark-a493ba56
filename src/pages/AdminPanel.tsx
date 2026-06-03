@@ -116,6 +116,30 @@ const AdminPanel = () => {
     loadAll();
   };
 
+  const lookupKycDecision = async (status: "approved" | "rejected", reason?: string) => {
+    if (!lookupData?.kyc?.id) return;
+    const { error } = await supabase.from("kyc_submissions").update({
+      status,
+      rejection_reason: status === "rejected" ? (reason || "Rejected by admin") : null,
+      reviewed_at: new Date().toISOString(),
+    }).eq("id", lookupData.kyc.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: `KYC ${status}` });
+    await doLookup();
+    loadAll();
+  };
+
+  const verifyPhone = async (verified: boolean) => {
+    if (!lookupData?.user?.id) return;
+    const { error } = await supabase.from("profiles").update({ phone_verified: verified }).eq("user_id", lookupData.user.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: verified ? "Phone verified ✓" : "Phone unverified" });
+    await doLookup();
+    loadAll();
+  };
+
+  const [lookupRejectReason, setLookupRejectReason] = useState("");
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
@@ -323,6 +347,104 @@ const AdminPanel = () => {
                       <p className="font-semibold capitalize">{lookupData.kyc?.status || "Not submitted"}</p>
                     </div>
                   </div>
+
+                  {/* Phone verification card */}
+                  <Card className="p-3 border-blue-500/30 bg-blue-500/5">
+                    <p className="font-semibold text-sm mb-2 flex items-center gap-1">📱 Phone Verification</p>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Phone</p>
+                        <p className="font-mono text-sm">{lookupData.profile?.phone || "Not provided"}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Status</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${lookupData.profile?.phone_verified ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                          {lookupData.profile?.phone_verified ? "Verified ✓" : "Not Verified"}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Email</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${lookupData.profile?.email_verified ? "bg-green-500/10 text-green-500" : "bg-amber-500/10 text-amber-500"}`}>
+                          {lookupData.profile?.email_verified ? "Verified ✓" : "Pending"}
+                        </span>
+                      </div>
+                      <div className="ml-auto flex gap-2">
+                        {!lookupData.profile?.phone_verified ? (
+                          <Button size="sm" onClick={() => verifyPhone(true)} className="bg-green-600 hover:bg-green-700">
+                            <CheckCircle2 className="w-4 h-4 mr-1" />Verify Phone
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" onClick={() => verifyPhone(false)}>
+                            <XCircle className="w-4 h-4 mr-1" />Unverify
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </Card>
+
+                  {/* KYC details + documents + approve/reject */}
+                  <Card className="p-3 border-amber-500/30 bg-amber-500/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-sm flex items-center gap-1"><FileCheck className="w-4 h-4" />KYC Verification</p>
+                      <span className={`text-xs px-2 py-0.5 rounded-full ${lookupData.kyc?.status === "approved" ? "bg-green-500/10 text-green-500" : lookupData.kyc?.status === "rejected" ? "bg-destructive/10 text-destructive" : lookupData.kyc ? "bg-amber-500/10 text-amber-500" : "bg-muted text-muted-foreground"}`}>
+                        {lookupData.kyc?.status || "Not submitted"}
+                      </span>
+                    </div>
+                    {lookupData.kyc ? (
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+                          <div><p className="text-xs text-muted-foreground">Full Name</p><p className="font-medium">{lookupData.kyc.full_name_kyc}</p></div>
+                          <div><p className="text-xs text-muted-foreground">PAN</p><p className="font-mono">{lookupData.kyc.pan_number}</p></div>
+                          <div><p className="text-xs text-muted-foreground">Aadhaar</p><p className="font-mono">{lookupData.kyc.aadhaar_number}</p></div>
+                          {lookupData.kyc.date_of_birth && <div><p className="text-xs text-muted-foreground">DOB</p><p>{lookupData.kyc.date_of_birth}</p></div>}
+                          {lookupData.kyc.address && <div className="col-span-2"><p className="text-xs text-muted-foreground">Address</p><p className="text-xs">{lookupData.kyc.address}</p></div>}
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                          <Button variant="outline" size="sm" onClick={() => openDoc(lookupData.kyc.pan_document_url)}><ExternalLink className="w-3 h-3 mr-1" />PAN Doc</Button>
+                          <Button variant="outline" size="sm" onClick={() => openDoc(lookupData.kyc.aadhaar_front_url)}><ExternalLink className="w-3 h-3 mr-1" />Aadhaar Front</Button>
+                          <Button variant="outline" size="sm" onClick={() => openDoc(lookupData.kyc.aadhaar_back_url)}><ExternalLink className="w-3 h-3 mr-1" />Aadhaar Back</Button>
+                          <Button variant="outline" size="sm" onClick={() => openDoc(lookupData.kyc.selfie_url)}><ExternalLink className="w-3 h-3 mr-1" />Selfie</Button>
+                        </div>
+                        {lookupData.kyc.rejection_reason && (
+                          <p className="text-xs text-destructive">Rejection reason: {lookupData.kyc.rejection_reason}</p>
+                        )}
+                        <div className="flex flex-wrap gap-2 items-center pt-2 border-t border-border">
+                          <Input placeholder="Rejection reason (if rejecting)" value={lookupRejectReason} onChange={(e) => setLookupRejectReason(e.target.value)} className="max-w-[280px]" />
+                          <Button size="sm" variant="destructive" onClick={() => lookupKycDecision("rejected", lookupRejectReason)}>
+                            <XCircle className="w-4 h-4 mr-1" />Reject KYC
+                          </Button>
+                          <Button size="sm" onClick={() => lookupKycDecision("approved")} className="bg-green-600 hover:bg-green-700">
+                            <CheckCircle2 className="w-4 h-4 mr-1" />Approve KYC
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">User has not submitted KYC yet.</p>
+                    )}
+                  </Card>
+
+                  {/* Bank accounts */}
+                  {lookupData.banks?.length > 0 && (
+                    <Card className="p-3">
+                      <p className="font-semibold text-sm mb-2 flex items-center gap-1">🏦 Bank Accounts ({lookupData.banks.length})</p>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader><TableRow><TableHead>Holder</TableHead><TableHead>Bank</TableHead><TableHead>Account</TableHead><TableHead>IFSC</TableHead><TableHead>Primary</TableHead></TableRow></TableHeader>
+                          <TableBody>
+                            {lookupData.banks.map((b: any) => (
+                              <TableRow key={b.id}>
+                                <TableCell className="text-xs">{b.account_holder}</TableCell>
+                                <TableCell className="text-xs">{b.bank_name}</TableCell>
+                                <TableCell className="font-mono text-xs">{b.account_number}</TableCell>
+                                <TableCell className="font-mono text-xs">{b.ifsc_code}</TableCell>
+                                <TableCell>{b.is_primary && <CheckCircle2 className="w-4 h-4 text-green-500" />}</TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    </Card>
+                  )}
 
                   <Card className="p-3 border-primary/30 bg-primary/5">
                     <p className="font-semibold text-sm mb-2 flex items-center gap-1"><Plus className="w-4 h-4" />Add Deposit for this user</p>
