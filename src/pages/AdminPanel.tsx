@@ -332,6 +332,10 @@ const AdminPanel = () => {
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
+                              const userKyc = kycs.find(k => k.user_id === t.user_id);
+                              if (!userKyc || userKyc.status !== "approved") {
+                                return toast({ title: "KYC not approved", description: `Cannot approve payment — user's KYC status: ${userKyc?.status || "not submitted"}. Approve KYC first.`, variant: "destructive" });
+                              }
                               const { error } = await supabase.from("transactions").update({ status: "success" }).eq("id", t.id);
                               if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
                               toast({ title: "Payment approved ✓", description: `₹${t.amount} credited` });
