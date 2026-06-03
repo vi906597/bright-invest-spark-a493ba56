@@ -298,14 +298,63 @@ const AdminPanel = () => {
           <Card className="p-4"><p className="text-xs text-muted-foreground">Users / Pending KYC</p><p className="text-2xl font-bold">{profiles.length} <span className="text-amber-500 text-base">/ {pendingCount}</span></p></Card>
         </div>
 
-        <Tabs defaultValue="lookup">
+        <Tabs defaultValue="payments">
           <TabsList>
+            <TabsTrigger value="payments"><IndianRupee className="w-4 h-4 mr-1" />Pending Payments {txs.filter(t => t.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{txs.filter(t => t.status === "pending").length}</span>}</TabsTrigger>
             <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
-            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />KYC</TabsTrigger>
+            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="banks">Banks</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="payments">
+            <Card className="p-4 overflow-x-auto">
+              <p className="text-sm text-muted-foreground mb-3">UPI payments with UTR awaiting verification. Approve to credit user's portfolio.</p>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {txs.filter(t => t.status === "pending").map(t => {
+                    const prof = profiles.find(p => p.user_id === t.user_id);
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs">{new Date(t.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">
+                          <p className="font-medium">{prof?.full_name || "—"}</p>
+                          <p className="text-muted-foreground">{prof?.phone || ""}</p>
+                        </TableCell>
+                        <TableCell className="text-xs">{t.plan_name}</TableCell>
+                        <TableCell className="font-bold text-primary">₹{Number(t.amount).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs max-w-[260px] break-words">{(t as any).notes || "—"}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
+                              const { error } = await supabase.from("transactions").update({ status: "success" }).eq("id", t.id);
+                              if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+                              toast({ title: "Payment approved ✓", description: `₹${t.amount} credited` });
+                              loadAll();
+                            }}><CheckCircle2 className="w-3 h-3 mr-1" />Approve</Button>
+                            <Button size="sm" variant="destructive" className="h-8" onClick={async () => {
+                              const { error } = await supabase.from("transactions").update({ status: "failed" }).eq("id", t.id);
+                              if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+                              toast({ title: "Payment rejected" });
+                              loadAll();
+                            }}><XCircle className="w-3 h-3 mr-1" />Reject</Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {txs.filter(t => t.status === "pending").length === 0 && (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No pending payments</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
+
 
           <TabsContent value="lookup">
             <Card className="p-4 space-y-4">
