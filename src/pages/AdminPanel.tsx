@@ -314,11 +314,13 @@ const AdminPanel = () => {
               <p className="text-sm text-muted-foreground mb-3">UPI payments with UTR awaiting verification. Approve to credit user's portfolio.</p>
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>KYC</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {txs.filter(t => t.status === "pending").map(t => {
                     const prof = profiles.find(p => p.user_id === t.user_id);
+                    const userKyc = kycs.find(k => k.user_id === t.user_id);
+                    const kycStatus = userKyc?.status || "none";
                     return (
                       <TableRow key={t.id}>
                         <TableCell className="text-xs">{new Date(t.created_at).toLocaleString()}</TableCell>
@@ -326,6 +328,7 @@ const AdminPanel = () => {
                           <p className="font-medium">{prof?.full_name || "—"}</p>
                           <p className="text-muted-foreground">{prof?.phone || ""}</p>
                         </TableCell>
+                        <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${kycStatus === "approved" ? "bg-green-500/10 text-green-500" : kycStatus === "rejected" ? "bg-destructive/10 text-destructive" : kycStatus === "pending" ? "bg-amber-500/10 text-amber-500" : "bg-muted text-muted-foreground"}`}>{kycStatus}</span></TableCell>
                         <TableCell className="text-xs">{t.plan_name}</TableCell>
                         <TableCell className="font-bold text-primary">₹{Number(t.amount).toLocaleString()}</TableCell>
                         <TableCell className="text-xs max-w-[260px] break-words">{(t as any).notes || "—"}</TableCell>
