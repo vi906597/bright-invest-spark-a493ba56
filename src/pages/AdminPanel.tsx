@@ -299,10 +299,11 @@ const AdminPanel = () => {
         </div>
 
         <Tabs defaultValue="payments">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="payments"><IndianRupee className="w-4 h-4 mr-1" />Pending Payments {txs.filter(t => t.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{txs.filter(t => t.status === "pending").length}</span>}</TabsTrigger>
+            <TabsTrigger value="pending-kyc"><FileCheck className="w-4 h-4 mr-1" />Pending KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
             <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
-            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
+            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />All KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="banks">Banks</TabsTrigger>
