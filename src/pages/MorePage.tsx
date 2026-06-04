@@ -249,47 +249,43 @@ const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
 
   const open = (k: DialogKey) => setActiveDialog(k);
 
-// 👇 YAHI PASTE KAR (function yaha rahega)
 const handleWithdraw = async () => {
   if (!withdrawAmount || Number(withdrawAmount) <= 0) {
-    toast({ title: "Invalid amount", description: "Enter valid amount" });
+    toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
     return;
   }
-
-  // 👇 YAHI ADD KARNA HAI
+  if (kycStatus !== "approved") {
+    toast({ title: "KYC required", description: "Complete KYC verification before withdrawing.", variant: "destructive" });
+    return;
+  }
   if (Number(withdrawAmount) > totalValue) {
-    toast({
-      title: "Limit exceeded ❌",
-      description: `Max withdraw ₹${totalValue}`,
-    });
+    toast({ title: "Limit exceeded ❌", description: `Max withdraw ₹${totalValue.toLocaleString()}`, variant: "destructive" });
     return;
   }
-
   if (!userBank) {
-    toast({ title: "No bank account", description: "Please add primary bank" });
+    toast({ title: "No bank account", description: "Please add a primary bank account first.", variant: "destructive" });
     return;
   }
-
+  setWithdrawBusy(true);
   const { error } = await supabase.from("withdrawals").insert({
     user_id: user.id,
     amount: Number(withdrawAmount),
     bank_name: userBank.bank_name,
     account_number: userBank.account_number,
     account_holder: userBank.account_holder,
+    ifsc_code: userBank.ifsc_code,
+    method: "bank",
+    status: "pending",
   });
-
+  setWithdrawBusy(false);
   if (error) {
-    toast({ title: "Error", description: error.message });
+    toast({ title: "Error", description: error.message, variant: "destructive" });
     return;
   }
-
-  toast({
-    title: "Withdraw request sent 💸",
-    description: "Admin will process your request",
-  });
-
+  toast({ title: "Withdraw request sent 💸", description: "Admin will verify and process within 24 hours." });
   setWithdrawAmount("");
-  setActiveDialog(null);
+  const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+  if (w) setWithdrawals(w);
 };
 
   const sections = [
