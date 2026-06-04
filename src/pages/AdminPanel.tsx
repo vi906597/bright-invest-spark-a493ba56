@@ -753,6 +753,66 @@ const AdminPanel = () => {
               </Table>
             </Card>
           </TabsContent>
+          <TabsContent value="withdrawals">
+            <Card className="p-4 overflow-x-auto">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm text-muted-foreground">User withdrawal requests. Enter UTR after sending money, then approve.</p>
+                <Button size="sm" variant="outline" onClick={loadWithdrawals}><RefreshCw className="w-3 h-3 mr-1" />Refresh</Button>
+              </div>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Amount</TableHead><TableHead>Bank</TableHead><TableHead>Status</TableHead><TableHead>UTR / Reason</TableHead><TableHead>Action</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {withdrawals.map(w => {
+                    const prof = profiles.find(p => p.user_id === w.user_id);
+                    const isPending = w.status === "pending";
+                    return (
+                      <TableRow key={w.id}>
+                        <TableCell className="text-xs">{new Date(w.created_at).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">
+                          <p className="font-medium">{prof?.full_name || "—"}</p>
+                          <p className="text-muted-foreground">{prof?.phone || ""}</p>
+                        </TableCell>
+                        <TableCell className="font-bold text-primary">₹{Number(w.amount).toLocaleString()}</TableCell>
+                        <TableCell className="text-xs">
+                          <p>{w.account_holder}</p>
+                          <p className="text-muted-foreground">{w.bank_name} • ****{String(w.account_number || "").slice(-4)}</p>
+                          <p className="font-mono text-muted-foreground">{w.ifsc_code || "—"}</p>
+                        </TableCell>
+                        <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${w.status === "approved" ? "bg-green-500/10 text-green-500" : w.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{w.status}</span></TableCell>
+                        <TableCell className="text-xs">
+                          {isPending ? (
+                            <div className="space-y-1">
+                              <Input value={utrInputs[w.id] || ""} onChange={e => setUtrInputs({ ...utrInputs, [w.id]: e.target.value })} placeholder="Bank UTR" className="h-7 text-xs" />
+                              <Input value={rejectInputs[w.id] || ""} onChange={e => setRejectInputs({ ...rejectInputs, [w.id]: e.target.value })} placeholder="Reject reason (optional)" className="h-7 text-xs" />
+                            </div>
+                          ) : (
+                            <div>
+                              {w.utr && <p>UTR: <span className="font-mono">{w.utr}</span></p>}
+                              {w.rejection_reason && <p className="text-destructive">{w.rejection_reason}</p>}
+                              {w.processed_at && <p className="text-muted-foreground">{new Date(w.processed_at).toLocaleString()}</p>}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isPending && (
+                            <div className="flex flex-col gap-1">
+                              <Button size="sm" className="bg-green-600 hover:bg-green-700 h-7" onClick={() => approveWithdrawal(w)}><CheckCircle2 className="w-3 h-3 mr-1" />Approve</Button>
+                              <Button size="sm" variant="destructive" className="h-7" onClick={() => rejectWithdrawal(w)}><XCircle className="w-3 h-3 mr-1" />Reject</Button>
+                            </div>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {withdrawals.length === 0 && (
+                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No withdrawal requests</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </Card>
+          </TabsContent>
         </Tabs>
       </main>
 
