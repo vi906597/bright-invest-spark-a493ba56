@@ -88,7 +88,21 @@ const [accounts, setAccounts] = useState<any[]>([]);
 
   fetchTotalValue();
 }, [user]);
-const userBank = accounts.find(acc => acc.is_primary) || null;
+
+useEffect(() => {
+  const loadExtras = async () => {
+    if (!user) return;
+    const [w, k] = await Promise.all([
+      supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("kyc_submissions").select("status").eq("user_id", user.id).maybeSingle(),
+    ]);
+    if (w.data) setWithdrawals(w.data);
+    setKycStatus((k.data as any)?.status || "none");
+  };
+  loadExtras();
+}, [user, activeDialog]);
+
+const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
 
   // Editable fields
   const [editName, setEditName] = useState("");
