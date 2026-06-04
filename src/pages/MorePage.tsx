@@ -40,6 +40,9 @@ const MorePage = () => {
   const [loading, setLoading] = useState(true);
   const [activeDialog, setActiveDialog] = useState<DialogKey>(null);
 const [withdrawAmount, setWithdrawAmount] = useState("");
+const [withdrawBusy, setWithdrawBusy] = useState(false);
+const [withdrawals, setWithdrawals] = useState<any[]>([]);
+const [kycStatus, setKycStatus] = useState<string>("none");
 const [accounts, setAccounts] = useState<any[]>([]);
   const [totalValue, setTotalValue] = useState(0);
   useEffect(() => {
