@@ -345,6 +345,7 @@ const AdminPanel = () => {
             <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />All KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
+            <TabsTrigger value="withdrawals"><IndianRupee className="w-4 h-4 mr-1" />Withdrawals {withdrawals.filter(w => w.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{withdrawals.filter(w => w.status === "pending").length}</span>}</TabsTrigger>
             <TabsTrigger value="banks">Banks</TabsTrigger>
           </TabsList>
 
