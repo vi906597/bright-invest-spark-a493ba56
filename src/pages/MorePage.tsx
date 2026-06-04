@@ -532,14 +532,18 @@ const handleWithdraw = async () => {
 
     {/* Withdraw */}
 <Dialog open={activeDialog === "withdraw"} onOpenChange={(o) => !o && setActiveDialog(null)}>
-  <DialogContent className="rounded-2xl">
-
+  <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
     <DialogHeader>
-      <DialogTitle>Withdraw</DialogTitle>
-      <DialogDescription>Enter amount to withdraw</DialogDescription>
+      <DialogTitle>Withdraw Funds</DialogTitle>
+      <DialogDescription>Available balance: ₹{totalValue.toLocaleString()}</DialogDescription>
     </DialogHeader>
 
-    {/* Amount Input */}
+    {kycStatus !== "approved" && (
+      <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400">
+        ⚠️ KYC {kycStatus === "pending" ? "is pending verification" : kycStatus === "rejected" ? "was rejected" : "not submitted"}. Withdrawals are only allowed after KYC approval.
+      </div>
+    )}
+
     <div className="space-y-3">
       <div>
         <label className="text-sm font-medium">Amount (₹)</label>
@@ -550,28 +554,50 @@ const handleWithdraw = async () => {
           onChange={(e) => setWithdrawAmount(e.target.value)}
           className="w-full mt-1 p-2 rounded-xl border border-border bg-background"
         />
+        <div className="flex gap-2 mt-2">
+          {[500, 1000, 5000].filter(a => a <= totalValue).map(a => (
+            <Button key={a} size="sm" variant="outline" className="rounded-full text-xs h-7" onClick={() => setWithdrawAmount(String(a))}>₹{a}</Button>
+          ))}
+          {totalValue > 0 && <Button size="sm" variant="outline" className="rounded-full text-xs h-7" onClick={() => setWithdrawAmount(String(totalValue))}>Max</Button>}
+        </div>
       </div>
 
-      {/* Auto Selected Bank */}
       <div className="p-3 rounded-xl border border-border bg-secondary/30">
         <p className="text-sm font-medium">Bank Account</p>
-       <p className="text-xs text-muted-foreground">
-  {userBank
-    ? `${userBank.bank_name} - ****${userBank.account_number.slice(-4)}`
-    : "No bank linked"}
-</p>
+        <p className="text-xs text-muted-foreground">
+          {userBank
+            ? `${userBank.account_holder} • ${userBank.bank_name} • ****${userBank.account_number.slice(-4)} • ${userBank.ifsc_code}`
+            : "No bank linked — add one from Bank Accounts"}
+        </p>
       </div>
+
+      {withdrawals.length > 0 && (
+        <div>
+          <p className="text-sm font-medium mb-2">Recent Withdrawals</p>
+          <div className="space-y-2 max-h-48 overflow-y-auto">
+            {withdrawals.slice(0, 8).map(w => (
+              <div key={w.id} className="flex items-center justify-between p-2 rounded-lg border border-border text-xs">
+                <div>
+                  <p className="font-medium">₹{Number(w.amount).toLocaleString()}</p>
+                  <p className="text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
+                  {w.utr && <p className="text-muted-foreground">UTR: {w.utr}</p>}
+                  {w.rejection_reason && <p className="text-destructive">{w.rejection_reason}</p>}
+                </div>
+                <span className={`px-2 py-0.5 rounded-full ${w.status === "approved" ? "bg-green-500/10 text-green-500" : w.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{w.status}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
 
     <DialogFooter>
-  <Button
-    onClick={handleWithdraw}
-    className="rounded-xl"
-  >
-    Withdraw Now
-  </Button>
-</DialogFooter>
-</DialogContent>
+      <Button onClick={handleWithdraw} className="rounded-xl" disabled={withdrawBusy || kycStatus !== "approved" || !userBank}>
+        {withdrawBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
+        Withdraw Now
+      </Button>
+    </DialogFooter>
+  </DialogContent>
 </Dialog>
       {/* eAisha Card */}
       {user && <EaishaCardDialog open={activeDialog === "card"} onOpenChange={(o) => !o && setActiveDialog(null)} userId={user.id} userEmail={user.email} userName={displayName} userPhone={phoneNumber} />}
