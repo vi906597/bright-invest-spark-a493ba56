@@ -150,6 +150,35 @@ const AdminPanel = () => {
     setPendingKycs(data?.kycs || []);
   };
 
+  const [withdrawals, setWithdrawals] = useState<any[]>([]);
+  const [utrInputs, setUtrInputs] = useState<Record<string, string>>({});
+  const [rejectInputs, setRejectInputs] = useState<Record<string, string>>({});
+  const loadWithdrawals = async () => {
+    const { data } = await supabase.from("withdrawals").select("*").order("created_at", { ascending: false }).limit(200);
+    if (data) setWithdrawals(data);
+  };
+  const approveWithdrawal = async (w: any) => {
+    const utr = utrInputs[w.id]?.trim();
+    if (!utr) return toast({ title: "UTR required", description: "Enter the bank UTR/reference before approving.", variant: "destructive" });
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("withdrawals").update({
+      status: "approved", utr, processed_at: new Date().toISOString(), processed_by: user?.id || null, rejection_reason: null,
+    }).eq("id", w.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: "Withdrawal approved ✓", description: `₹${w.amount} marked paid (UTR ${utr})` });
+    loadWithdrawals();
+  };
+  const rejectWithdrawal = async (w: any) => {
+    const reason = rejectInputs[w.id]?.trim() || "Rejected by admin";
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("withdrawals").update({
+      status: "rejected", rejection_reason: reason, processed_at: new Date().toISOString(), processed_by: user?.id || null,
+    }).eq("id", w.id);
+    if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
+    toast({ title: "Withdrawal rejected" });
+    loadWithdrawals();
+  };
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) navigate("/secure-admin-92/login");
