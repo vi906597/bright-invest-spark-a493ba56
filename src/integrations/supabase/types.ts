@@ -303,32 +303,59 @@ export type Database = {
         Row: {
           account_holder: string | null
           account_number: string | null
-          amount: number | null
+          amount: number
           bank_name: string | null
           created_at: string | null
           id: string
-          status: string | null
-          user_id: string | null
+          ifsc_code: string | null
+          method: string
+          notes: string | null
+          processed_at: string | null
+          processed_by: string | null
+          rejection_reason: string | null
+          status: string
+          updated_at: string
+          upi_id: string | null
+          user_id: string
+          utr: string | null
         }
         Insert: {
           account_holder?: string | null
           account_number?: string | null
-          amount?: number | null
+          amount: number
           bank_name?: string | null
           created_at?: string | null
           id?: string
-          status?: string | null
-          user_id?: string | null
+          ifsc_code?: string | null
+          method?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          upi_id?: string | null
+          user_id: string
+          utr?: string | null
         }
         Update: {
           account_holder?: string | null
           account_number?: string | null
-          amount?: number | null
+          amount?: number
           bank_name?: string | null
           created_at?: string | null
           id?: string
-          status?: string | null
-          user_id?: string | null
+          ifsc_code?: string | null
+          method?: string
+          notes?: string | null
+          processed_at?: string | null
+          processed_by?: string | null
+          rejection_reason?: string | null
+          status?: string
+          updated_at?: string
+          upi_id?: string | null
+          user_id?: string
+          utr?: string | null
         }
         Relationships: []
       }
