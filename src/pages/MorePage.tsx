@@ -70,20 +70,26 @@ const [accounts, setAccounts] = useState<any[]>([]);
   const fetchTotalValue = async () => {
     if (!user) return;
 
-    const { data, error } = await supabase
-      .from("transactions")
-      .select("amount")
-      .eq("user_id", user.id);
+    const [{ data: txs }, { data: credits }] = await Promise.all([
+      supabase.from("transactions").select("amount, type, status").eq("user_id", user.id),
+      supabase.from("daily_interest_credits").select("amount").eq("user_id", user.id),
+    ]);
 
-    if (error) {
-      console.log(error);
-      return;
-    }
+    const invested = (txs || [])
+      .filter((t: any) => {
+        const type = (t.type || "").toLowerCase().trim();
+        const status = (t.status || "").toLowerCase().trim();
+        return status === "success" && (type === "sip" || type === "deposit" || type === "credit");
+      })
+      .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
 
-    if (data) {
-      const total = data.reduce((sum, item) => sum + Number(item.amount), 0);
-      setTotalValue(total);
-    }
+    const withdrawn = (txs || [])
+      .filter((t: any) => (t.type || "").toLowerCase().trim() === "withdraw")
+      .reduce((s: number, t: any) => s + Math.abs(Number(t.amount || 0)), 0);
+
+    const totalInterest = (credits || []).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
+
+    setTotalValue(invested + totalInterest - withdrawn);
   };
 
   fetchTotalValue();
