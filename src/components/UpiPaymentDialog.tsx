@@ -116,7 +116,28 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
           <div className="space-y-4">
             <div className="flex justify-center">
               <div className="p-4 rounded-2xl border-2 border-primary/20 bg-white shadow-lg">
-                <img src={qrUrl} alt="UPI QR" className="w-64 h-64 sm:w-72 sm:h-72 rounded-lg" />
+                <div className="relative w-64 h-64 sm:w-72 sm:h-72">
+                  {!qrLoaded && (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-white rounded-lg z-10 animate-fade-in">
+                      <div className="relative">
+                        <div className="w-16 h-16 rounded-full border-4 border-primary/20 border-t-primary animate-spin" />
+                        <Loader2 className="w-6 h-6 text-primary absolute inset-0 m-auto animate-pulse" />
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-3 font-medium">Generating QR...</p>
+                      <div className="flex gap-1 mt-2">
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "0ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "150ms" }} />
+                        <span className="w-1.5 h-1.5 rounded-full bg-primary animate-bounce" style={{ animationDelay: "300ms" }} />
+                      </div>
+                    </div>
+                  )}
+                  <img
+                    src={qrUrl}
+                    alt="UPI QR"
+                    onLoad={() => setQrLoaded(true)}
+                    className={`w-full h-full rounded-lg transition-opacity duration-500 ${qrLoaded ? "opacity-100 animate-scale-in" : "opacity-0"}`}
+                  />
+                </div>
               </div>
             </div>
 
