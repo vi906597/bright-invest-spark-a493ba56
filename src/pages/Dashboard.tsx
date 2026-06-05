@@ -78,6 +78,10 @@ const Dashboard = () => {
       })
       .reduce((s, t) => s + Number(t.amount || 0), 0);
 
+    const withdrawn = txs
+      .filter((t) => (t.type || "").toLowerCase().trim() === "withdraw")
+      .reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0);
+
     const todayInterest = (credits || [])
       .filter((c) => c.credit_date === today)
       .reduce((s, c) => s + Number(c.amount || 0), 0);
@@ -92,8 +96,8 @@ const Dashboard = () => {
     ).size;
 
     setStats({
-      invested,
-      currentValue: invested + totalInterest,
+      invested: invested - withdrawn,
+      currentValue: invested + totalInterest - withdrawn,
       activeSips,
       todayInterest,
       totalInterest,
