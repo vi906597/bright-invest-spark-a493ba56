@@ -267,23 +267,35 @@ const handleWithdraw = async () => {
     return;
   }
   setWithdrawBusy(true);
-  const { error } = await supabase.from("withdrawals").insert({
+  const amt = Number(withdrawAmount);
+  const { data: wRow, error } = await supabase.from("withdrawals").insert({
     user_id: user.id,
-    amount: Number(withdrawAmount),
+    amount: amt,
     bank_name: userBank.bank_name,
     account_number: userBank.account_number,
     account_holder: userBank.account_holder,
     ifsc_code: userBank.ifsc_code,
     method: "bank",
     status: "pending",
-  });
-  setWithdrawBusy(false);
+  }).select().maybeSingle();
   if (error) {
+    setWithdrawBusy(false);
     toast({ title: "Error", description: error.message, variant: "destructive" });
     return;
   }
-  toast({ title: "Withdraw request sent 💸", description: "Admin will verify and process within 24 hours." });
+  // Deduct amount from balance immediately (debit transaction)
+  await supabase.from("transactions").insert({
+    user_id: user.id,
+    amount: -amt,
+    plan_name: "Withdrawal",
+    type: "withdraw",
+    status: "success",
+    notes: `Withdraw request${wRow?.id ? ` #${wRow.id}` : ""} to ${userBank.bank_name} A/C ${userBank.account_number}`,
+  });
+  setWithdrawBusy(false);
+  toast({ title: "Withdraw request sent 💸", description: `₹${amt.toLocaleString()} deducted. Admin will verify within 24 hours.` });
   setWithdrawAmount("");
+  setTotalValue((v) => v - amt);
   const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
   if (w) setWithdrawals(w);
 };
