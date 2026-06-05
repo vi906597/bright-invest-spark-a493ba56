@@ -96,8 +96,8 @@ const Dashboard = () => {
     ).size;
 
     setStats({
-      invested,
-      currentValue: invested + totalInterest,
+      invested: invested - withdrawn,
+      currentValue: invested + totalInterest - withdrawn,
       activeSips,
       todayInterest,
       totalInterest,
