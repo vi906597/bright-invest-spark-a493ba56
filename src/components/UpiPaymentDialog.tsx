@@ -22,6 +22,11 @@ const UpiPaymentDialog = ({ open, onOpenChange, amount, planName, onSubmitted }:
   const [utr, setUtr] = useState("");
   const [busy, setBusy] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [qrLoaded, setQrLoaded] = useState(false);
+
+  React.useEffect(() => {
+    if (open) setQrLoaded(false);
+  }, [open, amount, planName]);
 
   const upiLink = useMemo(() => {
     const params = new URLSearchParams({
