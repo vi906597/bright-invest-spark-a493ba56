@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Menu, ArrowRight, ShieldCheck, TrendingUp, Wallet, Smartphone, Zap, BarChart3,
   CheckCircle2, Star, Users, Award, Lock, HeadphonesIcon, ChevronDown, Sparkles,
+  X, Calculator, FolderOpen, Info, Briefcase, Newspaper, Mail, FileText, Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const LandingPage = () => {
   const navigate = useNavigate();
