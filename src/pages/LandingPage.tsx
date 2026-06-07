@@ -4,6 +4,7 @@ import {
   Menu, ArrowRight, ShieldCheck, TrendingUp, Wallet, Smartphone, Zap, BarChart3,
   CheckCircle2, Star, Users, Award, Lock, HeadphonesIcon, ChevronDown, Sparkles,
   X, Calculator, FolderOpen, Info, Briefcase, Newspaper, Mail, FileText, Shield,
+  PiggyBank, Landmark, Percent, Banknote,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -85,6 +86,26 @@ const LandingPage = () => {
                       { label: "Mutual Funds", icon: BarChart3 },
                       { label: "Portfolio", icon: FolderOpen },
                       { label: "Calculator", icon: Calculator },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={goAuth}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <item.icon className="w-4 h-4 text-primary" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Why SIP</h4>
+                  <div className="space-y-1">
+                    {[
+                      { label: "Start from ₹10 / month", icon: PiggyBank },
+                      { label: "Power of compounding", icon: TrendingUp },
+                      { label: "Tax benefit u/s 80C", icon: Landmark },
+                      { label: "Zero commission direct plans", icon: Percent },
                     ].map((item) => (
                       <button
                         key={item.label}
