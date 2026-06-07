@@ -1,11 +1,13 @@
-import React from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Menu, ArrowRight, ShieldCheck, TrendingUp, Wallet, Smartphone, Zap, BarChart3,
   CheckCircle2, Star, Users, Award, Lock, HeadphonesIcon, ChevronDown, Sparkles,
+  X, Calculator, FolderOpen, Info, Briefcase, Newspaper, Mail, FileText, Shield,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 const LandingPage = () => {
   const navigate = useNavigate();
@@ -61,9 +63,88 @@ const LandingPage = () => {
           <Button onClick={goAuth} className="hidden md:inline-flex h-9 rounded-full gradient-primary text-primary-foreground px-5">
             Get Started
           </Button>
-          <button onClick={goAuth} aria-label="Open menu" className="w-11 h-11 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
-            <Menu className="w-7 h-7" />
-          </button>
+          <Sheet>
+            <SheetTrigger asChild>
+              <button aria-label="Open menu" className="w-11 h-11 rounded-full flex items-center justify-center text-foreground hover:bg-secondary transition-colors">
+                <Menu className="w-7 h-7" />
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[360px] p-0">
+              <SheetHeader className="p-6 pb-4 border-b border-border">
+                <SheetTitle className="flex items-center gap-2">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center gradient-primary text-primary-foreground font-bold shadow-elevated">Z</div>
+                  <span className="font-semibold text-foreground text-base tracking-tight">Zypeus</span>
+                </SheetTitle>
+              </SheetHeader>
+              <div className="p-6 space-y-6 overflow-y-auto">
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Product</h4>
+                  <div className="space-y-1">
+                    {[
+                      { label: "Smart SIP", icon: TrendingUp },
+                      { label: "Mutual Funds", icon: BarChart3 },
+                      { label: "Portfolio", icon: FolderOpen },
+                      { label: "Calculator", icon: Calculator },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={goAuth}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <item.icon className="w-4 h-4 text-primary" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Company</h4>
+                  <div className="space-y-1">
+                    {[
+                      { label: "About", icon: Info },
+                      { label: "Careers", icon: Briefcase },
+                      { label: "Press", icon: Newspaper },
+                      { label: "Contact", icon: Mail },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={goAuth}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <item.icon className="w-4 h-4 text-primary" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Legal</h4>
+                  <div className="space-y-1">
+                    {[
+                      { label: "Privacy", icon: Shield },
+                      { label: "Terms", icon: FileText },
+                      { label: "Disclosures", icon: FileText },
+                      { label: "Grievance", icon: Mail },
+                    ].map((item) => (
+                      <button
+                        key={item.label}
+                        onClick={goAuth}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                      >
+                        <item.icon className="w-4 h-4 text-primary" />
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-border">
+                  <Button onClick={goAuth} className="w-full h-11 rounded-xl gradient-primary text-primary-foreground font-semibold">
+                    Get Started <ArrowRight className="ml-2 w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </header>
 
