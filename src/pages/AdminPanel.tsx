@@ -140,6 +140,17 @@ const AdminPanel = () => {
 
   const [lookupRejectReason, setLookupRejectReason] = useState("");
 
+  // Auto-refresh lookup data every 15s to always show latest info
+  useEffect(() => {
+    if (!lookupData?.user?.email) return;
+    const id = setInterval(() => {
+      if (!lookupBusy) doLookup();
+    }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookupData?.user?.email]);
+
+
   const [pendingKycs, setPendingKycs] = useState<any[]>([]);
   const [pendingKycsBusy, setPendingKycsBusy] = useState(false);
   const loadPendingKycs = async () => {
