@@ -100,7 +100,7 @@ const LandingPage = () => {
                 </div>
                 <div>
                   <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground mb-3">Why SIP</h4>
-                  <div className="space-y-1">
+                  <div className="grid grid-cols-2 gap-2">
                     {[
                       { label: "Start from ₹10 / month", icon: PiggyBank },
                       { label: "Power of compounding", icon: TrendingUp },
@@ -110,10 +110,12 @@ const LandingPage = () => {
                       <button
                         key={item.label}
                         onClick={goAuth}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+                        className="flex flex-col items-start gap-2 p-3 rounded-xl bg-card border border-border hover:shadow-card transition-all text-left"
                       >
-                        <item.icon className="w-4 h-4 text-primary" />
-                        {item.label}
+                        <div className="w-8 h-8 rounded-lg gradient-primary flex items-center justify-center shadow-sm">
+                          <item.icon className="w-4 h-4 text-primary-foreground" />
+                        </div>
+                        <span className="text-xs font-semibold text-foreground leading-snug">{item.label}</span>
                       </button>
                     ))}
                   </div>
