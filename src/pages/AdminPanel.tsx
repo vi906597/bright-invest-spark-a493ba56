@@ -140,6 +140,17 @@ const AdminPanel = () => {
 
   const [lookupRejectReason, setLookupRejectReason] = useState("");
 
+  // Auto-refresh lookup data every 15s to always show latest info
+  useEffect(() => {
+    if (!lookupData?.user?.email) return;
+    const id = setInterval(() => {
+      if (!lookupBusy) doLookup();
+    }, 15000);
+    return () => clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lookupData?.user?.email]);
+
+
   const [pendingKycs, setPendingKycs] = useState<any[]>([]);
   const [pendingKycsBusy, setPendingKycsBusy] = useState(false);
   const loadPendingKycs = async () => {
@@ -476,7 +487,13 @@ const AdminPanel = () => {
                   {lookupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   <span className="ml-1">Search</span>
                 </Button>
+                {lookupData && (
+                  <Button variant="outline" onClick={doLookup} disabled={lookupBusy} title="Refresh latest data">
+                    <RefreshCw className={`w-4 h-4 ${lookupBusy ? "animate-spin" : ""}`} />
+                  </Button>
+                )}
               </div>
+
 
               {lookupData && (
                 <div className="space-y-4">
