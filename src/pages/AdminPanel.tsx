@@ -476,7 +476,13 @@ const AdminPanel = () => {
                   {lookupBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
                   <span className="ml-1">Search</span>
                 </Button>
+                {lookupData && (
+                  <Button variant="outline" onClick={doLookup} disabled={lookupBusy} title="Refresh latest data">
+                    <RefreshCw className={`w-4 h-4 ${lookupBusy ? "animate-spin" : ""}`} />
+                  </Button>
+                )}
               </div>
+
 
               {lookupData && (
                 <div className="space-y-4">
