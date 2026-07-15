@@ -45,6 +45,7 @@ const EaishaCardDialog = ({ open, onOpenChange, userId, userEmail, userName, use
           secret_code: rand(4),
           card_holder_name: holder,
           phone: userPhone || null,
+          eaisha_amount: 100,
         };
         const { data: created, error } = await supabase.from("eaisha_cards").insert(newCard).select().single();
         if (error) {
