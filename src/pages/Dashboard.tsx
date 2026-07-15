@@ -286,11 +286,10 @@ const Dashboard = () => {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-bold text-foreground">{plan.name}</h3>
-                    <div className="flex items-baseline gap-1 mt-1">
+                    <div className="mt-1">
                       <span className="text-2xl font-bold text-primary">
                         ₹{plan.amount.toLocaleString()}
                       </span>
-                      <span className="text-sm text-muted-foreground">/month</span>
                     </div>
                     <div className="mt-3 space-y-2 text-sm">
                       <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
