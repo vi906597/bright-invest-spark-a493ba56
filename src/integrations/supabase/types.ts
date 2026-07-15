@@ -96,6 +96,7 @@ export type Database = {
         Row: {
           card_holder_name: string
           created_at: string
+          eaisha_amount: number
           id: string
           member_code: string
           phone: string | null
@@ -108,6 +109,7 @@ export type Database = {
         Insert: {
           card_holder_name: string
           created_at?: string
+          eaisha_amount?: number
           id?: string
           member_code: string
           phone?: string | null
@@ -120,6 +122,7 @@ export type Database = {
         Update: {
           card_holder_name?: string
           created_at?: string
+          eaisha_amount?: number
           id?: string
           member_code?: string
           phone?: string | null

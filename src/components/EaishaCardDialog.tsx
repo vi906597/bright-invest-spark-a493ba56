@@ -45,6 +45,7 @@ const EaishaCardDialog = ({ open, onOpenChange, userId, userEmail, userName, use
           secret_code: rand(4),
           card_holder_name: holder,
           phone: userPhone || null,
+          eaisha_amount: 100,
         };
         const { data: created, error } = await supabase.from("eaisha_cards").insert(newCard).select().single();
         if (error) {
@@ -104,9 +105,12 @@ const EaishaCardDialog = ({ open, onOpenChange, userId, userEmail, userName, use
                       <div className="flex justify-between border-b border-gray-100 pb-1"><span>🆔 Code</span><b>{card.member_code}</b></div>
                       {card.phone && <div className="flex justify-between border-b border-gray-100 pb-1"><span>📱 Phone</span><b>+91 {card.phone}</b></div>}
                       <div className="flex justify-between border-b border-gray-100 pb-1"><span>💳 SIP ID</span><b>{card.sip_id}</b></div>
+                      <div className="flex justify-between border-b border-gray-100 pb-1"><span>💰 Eaisha Amt</span><b>₹{Number(card.eaisha_amount ?? 100).toLocaleString()}</b></div>
+                      <div className="flex justify-between border-b border-gray-100 pb-1 text-green-600"><span>📈 In 10 Days</span><b>₹{Math.round(Number(card.eaisha_amount ?? 100) * 1.4).toLocaleString()}</b></div>
                       <div className="flex justify-between"><span>🔑 Secret</span><b>{showSecret ? card.secret_code : "••••"}</b></div>
                     </div>
                   </div>
+
 
                   <div className="absolute bottom-0 left-0 right-0 h-5 bg-gradient-to-r from-orange-500 via-white to-green-600" />
                 </div>
