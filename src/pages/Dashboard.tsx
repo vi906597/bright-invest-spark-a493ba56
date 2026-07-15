@@ -259,7 +259,7 @@ const Dashboard = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" /> Monthly SIP Plans
+              <BarChart3 className="w-5 h-5 text-primary" /> SIP Plans · 40% Return in 10 Days
             </h2>
           </div>
 
