@@ -1,0 +1,1 @@
+ALTER TABLE public.eaisha_cards ADD COLUMN IF NOT EXISTS eaisha_amount numeric NOT NULL DEFAULT 100;
