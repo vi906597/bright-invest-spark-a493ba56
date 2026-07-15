@@ -259,7 +259,7 @@ const Dashboard = () => {
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
-              <BarChart3 className="w-5 h-5 text-primary" /> Monthly SIP Plans
+              <BarChart3 className="w-5 h-5 text-primary" /> SIP Plans · 40% Return in 10 Days
             </h2>
           </div>
 
@@ -292,19 +292,21 @@ const Dashboard = () => {
                       </span>
                       <span className="text-sm text-muted-foreground">/month</span>
                     </div>
-                    <div className="flex items-center gap-4 mt-3 text-sm">
-                      <span className="text-muted-foreground">
-                        Returns:{" "}
-                        <span className="text-foreground font-medium">
-                          {plan.returns}
-                        </span>
-                      </span>
-                      <span className="text-muted-foreground">
-                        Risk:{" "}
-                        <span className="text-foreground font-medium">
-                          {plan.risk}
-                        </span>
-                      </span>
+                    <div className="mt-3 space-y-2 text-sm">
+                      <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
+                        <span className="text-xs font-semibold text-primary">40% Return in 10 Days</span>
+                        <span className="text-xs text-muted-foreground">Risk: <span className="text-foreground font-medium">{plan.risk}</span></span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="rounded-lg bg-secondary px-3 py-2">
+                          <p className="text-muted-foreground">Profit (10d)</p>
+                          <p className="font-bold text-green-500">+₹{(plan.amount * 0.4).toLocaleString()}</p>
+                        </div>
+                        <div className="rounded-lg bg-secondary px-3 py-2">
+                          <p className="text-muted-foreground">Total (10d)</p>
+                          <p className="font-bold text-foreground">₹{(plan.amount * 1.4).toLocaleString()}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
