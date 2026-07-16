@@ -699,29 +699,6 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="kyc">
-            <Card className="p-4 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Name</TableHead><TableHead>PAN</TableHead><TableHead>Aadhaar</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Submitted</TableHead><TableHead>Action</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {kycs.map(k => (
-                    <TableRow key={k.id}>
-                      <TableCell className="font-medium">{k.full_name_kyc}</TableCell>
-                      <TableCell className="font-mono text-xs">{k.pan_number}</TableCell>
-                      <TableCell className="font-mono text-xs">****{k.aadhaar_number.slice(-4)}</TableCell>
-                      <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${k.status === "approved" ? "bg-green-500/10 text-green-500" : k.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{k.status}</span></TableCell>
-                      <TableCell className="text-xs">{new Date(k.submitted_at).toLocaleDateString()}</TableCell>
-                      <TableCell><Button size="sm" variant="outline" onClick={() => setReviewKyc(k)}>Review</Button></TableCell>
-                    </TableRow>
-                  ))}
-                  {kycs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No KYC submissions</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="tx">
             <Card className="p-4 overflow-x-auto">
@@ -751,13 +728,14 @@ const AdminPanel = () => {
           <TabsContent value="users">
             <Card className="p-4 overflow-x-auto">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Invested</TableHead><TableHead>Interest</TableHead><TableHead>Joined</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Invested</TableHead><TableHead>Payout Due (40%)</TableHead><TableHead>Interest Paid</TableHead><TableHead>Joined</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {profiles.map(p => (
                     <TableRow key={p.user_id}>
                       <TableCell>{p.full_name || "—"}</TableCell>
                       <TableCell>{p.phone || "—"}</TableCell>
                       <TableCell className="font-medium text-primary">₹{userInvested(p.user_id).toLocaleString()}</TableCell>
+                      <TableCell className="font-bold text-green-500">₹{Math.round(userPayoutDue(p.user_id)).toLocaleString()}</TableCell>
                       <TableCell className="font-medium text-green-500">₹{userInterest(p.user_id).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                       <TableCell><Button size="sm" variant="outline" onClick={() => setCreditUser(p)}><Coins className="w-3 h-3 mr-1" />Credit</Button></TableCell>
@@ -768,24 +746,6 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="banks">
-            <Card className="p-4 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow><TableHead>Holder</TableHead><TableHead>Bank</TableHead><TableHead>Account</TableHead><TableHead>IFSC</TableHead><TableHead>Primary</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {banks.map(b => (
-                    <TableRow key={b.id}>
-                      <TableCell>{b.account_holder}</TableCell>
-                      <TableCell>{b.bank_name}</TableCell>
-                      <TableCell className="font-mono text-xs">****{b.account_number.slice(-4)}</TableCell>
-                      <TableCell className="font-mono text-xs">{b.ifsc_code}</TableCell>
-                      <TableCell>{b.is_primary && <CheckCircle2 className="w-4 h-4 text-green-500" />}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
           <TabsContent value="withdrawals">
             <Card className="p-4 overflow-x-auto">
               <div className="flex items-center justify-between mb-3">
