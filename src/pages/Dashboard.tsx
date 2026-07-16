@@ -44,6 +44,7 @@ const Dashboard = () => {
   const [payAmount, setPayAmount] = useState(0);
   const [payPlan, setPayPlan] = useState("");
   const [userId, setUserId] = useState<string>("");
+  const [activeInvestments, setActiveInvestments] = useState<any[]>([]);
   const [stats, setStats] = useState({
     invested: 0,
     currentValue: 0,
