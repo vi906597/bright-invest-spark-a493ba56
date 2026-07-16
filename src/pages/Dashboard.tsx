@@ -266,6 +266,58 @@ const Dashboard = () => {
           ))}
         </div>
 
+        {activeInvestments.length > 0 && (
+          <div className="mb-8">
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
+              <Calendar className="w-5 h-5 text-primary" /> Your Active Investments
+            </h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {activeInvestments.map((inv) => {
+                const amt = Number(inv.amount);
+                const startMs = new Date(inv.created_at).getTime();
+                const daysDone = Math.min(10, Math.floor((Date.now() - startMs) / 86400000));
+                const daysLeft = Math.max(0, 10 - daysDone);
+                const matured = daysLeft === 0;
+                const maturityDate = new Date(startMs + 10 * 86400000);
+                const payout = Math.round(amt * 1.4);
+                const pct = (daysDone / 10) * 100;
+                return (
+                  <Card key={inv.id} className={`p-4 rounded-2xl border-2 ${matured ? "border-green-500/40 bg-green-500/5" : "border-primary/20"}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-bold text-foreground text-sm">{inv.plan_name}</p>
+                        <p className="text-xs text-muted-foreground">Invested ₹{amt.toLocaleString()} on {new Date(inv.created_at).toLocaleDateString()}</p>
+                      </div>
+                      <span className={`text-xs px-2 py-1 rounded-full font-semibold ${matured ? "bg-green-500/15 text-green-600" : "bg-primary/15 text-primary"}`}>
+                        {matured ? "Matured ✓" : `Day ${daysDone}/10`}
+                      </span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden mb-2">
+                      <div className="h-full gradient-primary" style={{ width: `${pct}%` }} />
+                    </div>
+                    <div className="grid grid-cols-3 gap-2 text-xs">
+                      <div className="rounded-lg bg-secondary px-2 py-1.5">
+                        <p className="text-muted-foreground">Days Left</p>
+                        <p className="font-bold text-foreground">{daysLeft} days</p>
+                      </div>
+                      <div className="rounded-lg bg-secondary px-2 py-1.5">
+                        <p className="text-muted-foreground">Maturity</p>
+                        <p className="font-bold text-foreground">{maturityDate.toLocaleDateString()}</p>
+                      </div>
+                      <div className="rounded-lg bg-green-500/10 px-2 py-1.5">
+                        <p className="text-muted-foreground">Payout</p>
+                        <p className="font-bold text-green-600">₹{payout.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
+
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-foreground flex items-center gap-2">
