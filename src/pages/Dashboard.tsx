@@ -104,7 +104,15 @@ const Dashboard = () => {
       todayInterest,
       totalInterest,
     });
+
+    const active = txs.filter((t: any) => {
+      const type = (t.type || "").toLowerCase().trim();
+      const status = (t.status || "").toLowerCase().trim();
+      return status === "success" && (type === "sip" || type === "deposit");
+    });
+    setActiveInvestments(active);
   };
+
 
   React.useEffect(() => {
     const getUser = async () => {
