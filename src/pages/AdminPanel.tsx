@@ -361,31 +361,88 @@ const AdminPanel = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-7xl space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Total Users</p><p className="text-2xl font-bold">{profiles.length}</p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Today Invested</p><p className="text-2xl font-bold text-primary">₹{todayInvestedAmount.toLocaleString()}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Total Invested</p><p className="text-2xl font-bold text-primary">₹{totalInvested.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Interest Paid (All)</p><p className="text-2xl font-bold text-green-500">₹{totalInterestPaid.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Today's Interest</p><p className="text-2xl font-bold text-green-500">₹{todayInterestPaid.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground">Users / Pending KYC</p><p className="text-2xl font-bold">{profiles.length} <span className="text-amber-500 text-base">/ {pendingCount}</span></p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due (10d, 40%)</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4 border-amber-500/40 bg-amber-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Maturing Today</p><p className="text-2xl font-bold text-amber-500">₹{Math.round(maturingTodayAmount).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{maturingToday.length} investment(s)</p></Card>
         </div>
 
-        <Tabs defaultValue="payments">
+        <Tabs defaultValue="maturity">
           <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="maturity"><Coins className="w-4 h-4 mr-1" />Maturity Today {maturingToday.length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{maturingToday.length}</span>}</TabsTrigger>
             <TabsTrigger value="payments"><IndianRupee className="w-4 h-4 mr-1" />Pending Payments {txs.filter(t => t.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{txs.filter(t => t.status === "pending").length}</span>}</TabsTrigger>
-            <TabsTrigger value="pending-kyc"><FileCheck className="w-4 h-4 mr-1" />Pending KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
             <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
-            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />All KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="withdrawals"><IndianRupee className="w-4 h-4 mr-1" />Withdrawals {withdrawals.filter(w => w.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{withdrawals.filter(w => w.status === "pending").length}</span>}</TabsTrigger>
-            <TabsTrigger value="banks">Banks</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="maturity">
+            <Card className="p-4 overflow-x-auto">
+              <p className="text-sm text-muted-foreground mb-3">Aaj jinke 10 din pure ho gaye — user ko 40% profit ke saath total payout karna hai.</p>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Invested Date</TableHead><TableHead>Invested Amount</TableHead><TableHead>Profit (40%)</TableHead><TableHead>Total Payout</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {maturingToday.map(t => {
+                    const prof = profiles.find(p => p.user_id === t.user_id);
+                    const amt = Number(t.amount);
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs"><p className="font-medium">{prof?.full_name || "—"}</p><p className="text-muted-foreground">{prof?.phone || ""}</p></TableCell>
+                        <TableCell className="text-xs">{t.plan_name}</TableCell>
+                        <TableCell className="text-xs">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>₹{amt.toLocaleString()}</TableCell>
+                        <TableCell className="text-green-500">+₹{Math.round(amt * 0.4).toLocaleString()}</TableCell>
+                        <TableCell className="font-bold text-primary">₹{Math.round(amt * 1.4).toLocaleString()}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {maturingToday.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Aaj koi maturity nahi hai</TableCell></TableRow>)}
+                </TableBody>
+              </Table>
+
+              <div className="mt-6">
+                <p className="font-semibold text-sm mb-2">All Active Investments (10-day cycle)</p>
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Invested</TableHead><TableHead>Amount</TableHead><TableHead>Days</TableHead><TableHead>Maturity</TableHead><TableHead>Payout Due</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {activeInvestments.map(t => {
+                      const prof = profiles.find(p => p.user_id === t.user_id);
+                      const amt = Number(t.amount);
+                      const d = daysSince(t.created_at);
+                      const remaining = Math.max(0, 10 - d);
+                      const md = maturityDateOf(t.created_at);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="text-xs">{prof?.full_name || "—"}</TableCell>
+                          <TableCell className="text-xs">{t.plan_name}</TableCell>
+                          <TableCell className="text-xs">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-xs">₹{amt.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs"><span className="text-primary font-medium">Day {Math.min(d, 10)}/10</span><br/><span className="text-muted-foreground">{remaining} left</span></TableCell>
+                          <TableCell className="text-xs">{md.toLocaleDateString()}</TableCell>
+                          <TableCell className="font-bold text-green-500">₹{Math.round(amt * 1.4).toLocaleString()}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {activeInvestments.length === 0 && (<TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No active investments</TableCell></TableRow>)}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="payments">
             <Card className="p-4 overflow-x-auto">
               <p className="text-sm text-muted-foreground mb-3">UPI payments with UTR awaiting verification. Approve to credit user's portfolio.</p>
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>KYC</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {txs.filter(t => t.status === "pending").map(t => {
