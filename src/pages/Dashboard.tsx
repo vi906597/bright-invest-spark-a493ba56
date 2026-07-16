@@ -56,8 +56,9 @@ const Dashboard = () => {
   const loadStats = async (uid: string) => {
     const { data } = await supabase
       .from("transactions")
-      .select("amount, current_value, status, type, plan_name")
-      .eq("user_id", uid);
+      .select("id, amount, current_value, status, type, plan_name, created_at")
+      .eq("user_id", uid)
+      .order("created_at", { ascending: false });
 
     const today = new Date().toISOString().split("T")[0];
 
