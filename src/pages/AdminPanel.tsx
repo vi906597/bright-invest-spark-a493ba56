@@ -319,6 +319,26 @@ const AdminPanel = () => {
   const todayInterestPaid = credits.filter(c => c.credit_date === today).reduce((s, c) => s + Number(c.amount), 0);
   const userInterest = (uid: string) => credits.filter(c => c.user_id === uid).reduce((s, c) => s + Number(c.amount), 0);
 
+  // ---- Investment tracking (10-day, 40% return) ----
+  const activeInvestments = txs.filter(t => t.status === "success" && isInvestType(t));
+  const todayInvestedAmount = activeInvestments
+    .filter(t => new Date(t.created_at).toISOString().split("T")[0] === today)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const totalPayoutDue = activeInvestments.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  const maturityDateOf = (iso: string) => {
+    const d = new Date(iso); d.setDate(d.getDate() + 10);
+    return d;
+  };
+  const maturingToday = activeInvestments.filter(t => {
+    const md = maturityDateOf(t.created_at).toISOString().split("T")[0];
+    return md === today;
+  });
+  const maturingTodayAmount = maturingToday.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const userPayoutDue = (uid: string) => activeInvestments
+    .filter(t => t.user_id === uid)
+    .reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 glass-card border-b border-border">
@@ -341,37 +361,92 @@ const AdminPanel = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-7xl space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Total Users</p><p className="text-2xl font-bold">{profiles.length}</p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Today Invested</p><p className="text-2xl font-bold text-primary">₹{todayInvestedAmount.toLocaleString()}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Total Invested</p><p className="text-2xl font-bold text-primary">₹{totalInvested.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Interest Paid (All)</p><p className="text-2xl font-bold text-green-500">₹{totalInterestPaid.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Today's Interest</p><p className="text-2xl font-bold text-green-500">₹{todayInterestPaid.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground">Users / Pending KYC</p><p className="text-2xl font-bold">{profiles.length} <span className="text-amber-500 text-base">/ {pendingCount}</span></p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due (10d, 40%)</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4 border-amber-500/40 bg-amber-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Maturing Today</p><p className="text-2xl font-bold text-amber-500">₹{Math.round(maturingTodayAmount).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{maturingToday.length} investment(s)</p></Card>
         </div>
 
-        <Tabs defaultValue="payments">
+        <Tabs defaultValue="maturity">
           <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="maturity"><Coins className="w-4 h-4 mr-1" />Maturity Today {maturingToday.length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{maturingToday.length}</span>}</TabsTrigger>
             <TabsTrigger value="payments"><IndianRupee className="w-4 h-4 mr-1" />Pending Payments {txs.filter(t => t.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{txs.filter(t => t.status === "pending").length}</span>}</TabsTrigger>
-            <TabsTrigger value="pending-kyc"><FileCheck className="w-4 h-4 mr-1" />Pending KYC {pendingCount > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{pendingCount}</span>}</TabsTrigger>
             <TabsTrigger value="lookup"><Mail className="w-4 h-4 mr-1" />Lookup</TabsTrigger>
-            <TabsTrigger value="kyc"><FileCheck className="w-4 h-4 mr-1" />All KYC</TabsTrigger>
             <TabsTrigger value="tx"><CreditCard className="w-4 h-4 mr-1" />Transactions</TabsTrigger>
             <TabsTrigger value="users"><Users className="w-4 h-4 mr-1" />Users</TabsTrigger>
             <TabsTrigger value="withdrawals"><IndianRupee className="w-4 h-4 mr-1" />Withdrawals {withdrawals.filter(w => w.status === "pending").length > 0 && <span className="ml-1 px-1.5 rounded-full bg-amber-500 text-white text-[10px]">{withdrawals.filter(w => w.status === "pending").length}</span>}</TabsTrigger>
-            <TabsTrigger value="banks">Banks</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="maturity">
+            <Card className="p-4 overflow-x-auto">
+              <p className="text-sm text-muted-foreground mb-3">Aaj jinke 10 din pure ho gaye — user ko 40% profit ke saath total payout karna hai.</p>
+              <Table>
+                <TableHeader><TableRow>
+                  <TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Invested Date</TableHead><TableHead>Invested Amount</TableHead><TableHead>Profit (40%)</TableHead><TableHead>Total Payout</TableHead>
+                </TableRow></TableHeader>
+                <TableBody>
+                  {maturingToday.map(t => {
+                    const prof = profiles.find(p => p.user_id === t.user_id);
+                    const amt = Number(t.amount);
+                    return (
+                      <TableRow key={t.id}>
+                        <TableCell className="text-xs"><p className="font-medium">{prof?.full_name || "—"}</p><p className="text-muted-foreground">{prof?.phone || ""}</p></TableCell>
+                        <TableCell className="text-xs">{t.plan_name}</TableCell>
+                        <TableCell className="text-xs">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                        <TableCell>₹{amt.toLocaleString()}</TableCell>
+                        <TableCell className="text-green-500">+₹{Math.round(amt * 0.4).toLocaleString()}</TableCell>
+                        <TableCell className="font-bold text-primary">₹{Math.round(amt * 1.4).toLocaleString()}</TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {maturingToday.length === 0 && (<TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">Aaj koi maturity nahi hai</TableCell></TableRow>)}
+                </TableBody>
+              </Table>
+
+              <div className="mt-6">
+                <p className="font-semibold text-sm mb-2">All Active Investments (10-day cycle)</p>
+                <Table>
+                  <TableHeader><TableRow>
+                    <TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Invested</TableHead><TableHead>Amount</TableHead><TableHead>Days</TableHead><TableHead>Maturity</TableHead><TableHead>Payout Due</TableHead>
+                  </TableRow></TableHeader>
+                  <TableBody>
+                    {activeInvestments.map(t => {
+                      const prof = profiles.find(p => p.user_id === t.user_id);
+                      const amt = Number(t.amount);
+                      const d = daysSince(t.created_at);
+                      const remaining = Math.max(0, 10 - d);
+                      const md = maturityDateOf(t.created_at);
+                      return (
+                        <TableRow key={t.id}>
+                          <TableCell className="text-xs">{prof?.full_name || "—"}</TableCell>
+                          <TableCell className="text-xs">{t.plan_name}</TableCell>
+                          <TableCell className="text-xs">{new Date(t.created_at).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-xs">₹{amt.toLocaleString()}</TableCell>
+                          <TableCell className="text-xs"><span className="text-primary font-medium">Day {Math.min(d, 10)}/10</span><br/><span className="text-muted-foreground">{remaining} left</span></TableCell>
+                          <TableCell className="text-xs">{md.toLocaleDateString()}</TableCell>
+                          <TableCell className="font-bold text-green-500">₹{Math.round(amt * 1.4).toLocaleString()}</TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {activeInvestments.length === 0 && (<TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No active investments</TableCell></TableRow>)}
+                  </TableBody>
+                </Table>
+              </div>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="payments">
             <Card className="p-4 overflow-x-auto">
               <p className="text-sm text-muted-foreground mb-3">UPI payments with UTR awaiting verification. Approve to credit user's portfolio.</p>
               <Table>
                 <TableHeader><TableRow>
-                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>KYC</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
+                  <TableHead>Date</TableHead><TableHead>User</TableHead><TableHead>Plan</TableHead><TableHead>Amount</TableHead><TableHead>UTR / Notes</TableHead><TableHead>Action</TableHead>
                 </TableRow></TableHeader>
                 <TableBody>
                   {txs.filter(t => t.status === "pending").map(t => {
                     const prof = profiles.find(p => p.user_id === t.user_id);
-                    const userKyc = kycs.find(k => k.user_id === t.user_id);
-                    const kycStatus = userKyc?.status || "none";
                     return (
                       <TableRow key={t.id}>
                         <TableCell className="text-xs">{new Date(t.created_at).toLocaleString()}</TableCell>
@@ -379,17 +454,12 @@ const AdminPanel = () => {
                           <p className="font-medium">{prof?.full_name || "—"}</p>
                           <p className="text-muted-foreground">{prof?.phone || ""}</p>
                         </TableCell>
-                        <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${kycStatus === "approved" ? "bg-green-500/10 text-green-500" : kycStatus === "rejected" ? "bg-destructive/10 text-destructive" : kycStatus === "pending" ? "bg-amber-500/10 text-amber-500" : "bg-muted text-muted-foreground"}`}>{kycStatus}</span></TableCell>
                         <TableCell className="text-xs">{t.plan_name}</TableCell>
                         <TableCell className="font-bold text-primary">₹{Number(t.amount).toLocaleString()}</TableCell>
                         <TableCell className="text-xs max-w-[260px] break-words">{(t as any).notes || "—"}</TableCell>
                         <TableCell>
                           <div className="flex gap-1">
                             <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
-                              const userKyc = kycs.find(k => k.user_id === t.user_id);
-                              if (!userKyc || userKyc.status !== "approved") {
-                                return toast({ title: "KYC not approved", description: `Cannot approve payment — user's KYC status: ${userKyc?.status || "not submitted"}. Approve KYC first.`, variant: "destructive" });
-                              }
                               const { error } = await supabase.from("transactions").update({ status: "success" }).eq("id", t.id);
                               if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
                               toast({ title: "Payment approved ✓", description: `₹${t.amount} credited` });
@@ -407,69 +477,15 @@ const AdminPanel = () => {
                     );
                   })}
                   {txs.filter(t => t.status === "pending").length === 0 && (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No pending payments</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-6">No pending payments</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>
             </Card>
           </TabsContent>
 
-          <TabsContent value="pending-kyc">
-            <Card className="p-4 overflow-x-auto">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm text-muted-foreground">Pending KYC submissions awaiting verification. Approve to unlock the user's payments.</p>
-                <Button size="sm" variant="outline" onClick={loadPendingKycs} disabled={pendingKycsBusy}>
-                  {pendingKycsBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-                  <span className="ml-1">Refresh</span>
-                </Button>
-              </div>
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Submitted</TableHead><TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>PAN</TableHead><TableHead>Aadhaar</TableHead><TableHead>Docs</TableHead><TableHead>Action</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {pendingKycs.map((k: any) => (
-                    <TableRow key={k.id}>
-                      <TableCell className="text-xs">{new Date(k.submitted_at).toLocaleString()}</TableCell>
-                      <TableCell className="text-xs font-medium">{k.full_name_kyc}</TableCell>
-                      <TableCell className="text-xs">{k.email || "—"}</TableCell>
-                      <TableCell className="font-mono text-xs">{k.pan_number}</TableCell>
-                      <TableCell className="font-mono text-xs">****{k.aadhaar_number.slice(-4)}</TableCell>
-                      <TableCell>
-                        <div className="flex gap-1 flex-wrap">
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.pan_document_url)}>PAN</Button>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.aadhaar_front_url)}>Aad-F</Button>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.aadhaar_back_url)}>Aad-B</Button>
-                          <Button size="sm" variant="outline" className="h-7 px-2 text-[10px]" onClick={() => openDoc(k.selfie_url)}>Selfie</Button>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          <Button size="sm" className="bg-green-600 hover:bg-green-700 h-8" onClick={async () => {
-                            const { error } = await supabase.from("kyc_submissions").update({ status: "approved", rejection_reason: null, reviewed_at: new Date().toISOString() }).eq("id", k.id);
-                            if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
-                            toast({ title: "KYC approved ✓", description: k.email || k.full_name_kyc });
-                            loadPendingKycs(); loadAll();
-                          }}><CheckCircle2 className="w-3 h-3 mr-1" />Approve</Button>
-                          <Button size="sm" variant="destructive" className="h-8" onClick={async () => {
-                            const reason = window.prompt("Rejection reason:", "Documents unclear");
-                            if (!reason) return;
-                            const { error } = await supabase.from("kyc_submissions").update({ status: "rejected", rejection_reason: reason, reviewed_at: new Date().toISOString() }).eq("id", k.id);
-                            if (error) return toast({ title: "Error", description: error.message, variant: "destructive" });
-                            toast({ title: "KYC rejected" });
-                            loadPendingKycs(); loadAll();
-                          }}><XCircle className="w-3 h-3 mr-1" />Reject</Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {pendingKycs.length === 0 && (
-                    <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">No pending KYC submissions</TableCell></TableRow>
-                  )}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
+          {/* pending-kyc tab removed */}
+
 
 
 
@@ -683,29 +699,6 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="kyc">
-            <Card className="p-4 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow>
-                  <TableHead>Name</TableHead><TableHead>PAN</TableHead><TableHead>Aadhaar</TableHead>
-                  <TableHead>Status</TableHead><TableHead>Submitted</TableHead><TableHead>Action</TableHead>
-                </TableRow></TableHeader>
-                <TableBody>
-                  {kycs.map(k => (
-                    <TableRow key={k.id}>
-                      <TableCell className="font-medium">{k.full_name_kyc}</TableCell>
-                      <TableCell className="font-mono text-xs">{k.pan_number}</TableCell>
-                      <TableCell className="font-mono text-xs">****{k.aadhaar_number.slice(-4)}</TableCell>
-                      <TableCell><span className={`text-xs px-2 py-0.5 rounded-full ${k.status === "approved" ? "bg-green-500/10 text-green-500" : k.status === "rejected" ? "bg-destructive/10 text-destructive" : "bg-amber-500/10 text-amber-500"}`}>{k.status}</span></TableCell>
-                      <TableCell className="text-xs">{new Date(k.submitted_at).toLocaleDateString()}</TableCell>
-                      <TableCell><Button size="sm" variant="outline" onClick={() => setReviewKyc(k)}>Review</Button></TableCell>
-                    </TableRow>
-                  ))}
-                  {kycs.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">No KYC submissions</TableCell></TableRow>}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
 
           <TabsContent value="tx">
             <Card className="p-4 overflow-x-auto">
@@ -735,13 +728,14 @@ const AdminPanel = () => {
           <TabsContent value="users">
             <Card className="p-4 overflow-x-auto">
               <Table>
-                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Invested</TableHead><TableHead>Interest</TableHead><TableHead>Joined</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
+                <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Phone</TableHead><TableHead>Invested</TableHead><TableHead>Payout Due (40%)</TableHead><TableHead>Interest Paid</TableHead><TableHead>Joined</TableHead><TableHead>Action</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {profiles.map(p => (
                     <TableRow key={p.user_id}>
                       <TableCell>{p.full_name || "—"}</TableCell>
                       <TableCell>{p.phone || "—"}</TableCell>
                       <TableCell className="font-medium text-primary">₹{userInvested(p.user_id).toLocaleString()}</TableCell>
+                      <TableCell className="font-bold text-green-500">₹{Math.round(userPayoutDue(p.user_id)).toLocaleString()}</TableCell>
                       <TableCell className="font-medium text-green-500">₹{userInterest(p.user_id).toLocaleString()}</TableCell>
                       <TableCell className="text-xs">{new Date(p.created_at).toLocaleDateString()}</TableCell>
                       <TableCell><Button size="sm" variant="outline" onClick={() => setCreditUser(p)}><Coins className="w-3 h-3 mr-1" />Credit</Button></TableCell>
@@ -752,24 +746,6 @@ const AdminPanel = () => {
             </Card>
           </TabsContent>
 
-          <TabsContent value="banks">
-            <Card className="p-4 overflow-x-auto">
-              <Table>
-                <TableHeader><TableRow><TableHead>Holder</TableHead><TableHead>Bank</TableHead><TableHead>Account</TableHead><TableHead>IFSC</TableHead><TableHead>Primary</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {banks.map(b => (
-                    <TableRow key={b.id}>
-                      <TableCell>{b.account_holder}</TableCell>
-                      <TableCell>{b.bank_name}</TableCell>
-                      <TableCell className="font-mono text-xs">****{b.account_number.slice(-4)}</TableCell>
-                      <TableCell className="font-mono text-xs">{b.ifsc_code}</TableCell>
-                      <TableCell>{b.is_primary && <CheckCircle2 className="w-4 h-4 text-green-500" />}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </Card>
-          </TabsContent>
           <TabsContent value="withdrawals">
             <Card className="p-4 overflow-x-auto">
               <div className="flex items-center justify-between mb-3">
