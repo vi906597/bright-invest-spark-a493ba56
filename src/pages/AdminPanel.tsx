@@ -319,6 +319,26 @@ const AdminPanel = () => {
   const todayInterestPaid = credits.filter(c => c.credit_date === today).reduce((s, c) => s + Number(c.amount), 0);
   const userInterest = (uid: string) => credits.filter(c => c.user_id === uid).reduce((s, c) => s + Number(c.amount), 0);
 
+  // ---- Investment tracking (10-day, 40% return) ----
+  const activeInvestments = txs.filter(t => t.status === "success" && isInvestType(t));
+  const todayInvestedAmount = activeInvestments
+    .filter(t => new Date(t.created_at).toISOString().split("T")[0] === today)
+    .reduce((s, t) => s + Number(t.amount), 0);
+  const totalPayoutDue = activeInvestments.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  const maturityDateOf = (iso: string) => {
+    const d = new Date(iso); d.setDate(d.getDate() + 10);
+    return d;
+  };
+  const maturingToday = activeInvestments.filter(t => {
+    const md = maturityDateOf(t.created_at).toISOString().split("T")[0];
+    return md === today;
+  });
+  const maturingTodayAmount = maturingToday.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const userPayoutDue = (uid: string) => activeInvestments
+    .filter(t => t.user_id === uid)
+    .reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+
   return (
     <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 glass-card border-b border-border">
