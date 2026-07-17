@@ -67,7 +67,7 @@ useEffect(() => {
   loadExtras();
 }, [user, activeDialog]);
 
-const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
+
 
   // Editable fields
   const [editName, setEditName] = useState("");
