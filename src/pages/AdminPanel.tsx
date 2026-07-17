@@ -524,26 +524,41 @@ const AdminPanel = () => {
 
               {lookupData && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="p-3 rounded-lg bg-secondary">
                       <p className="text-xs text-muted-foreground">User</p>
                       <p className="font-semibold text-sm truncate">{lookupData.profile?.full_name || "—"}</p>
                       <p className="text-xs text-muted-foreground truncate">{lookupData.user.email}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">Invested (net)</p>
+                      <p className="text-xs text-muted-foreground">Invested (SIP)</p>
                       <p className="font-bold text-primary">₹{(lookupData.transactions || [])
-                        .filter((t: any) => t.status === "success")
-                        .reduce((s: number, t: any) => s + (t.type === "withdraw" ? -1 : 1) * Number(t.amount), 0)
+                        .filter((t: any) => t.status === "success" && (t.type === "sip" || t.type === "deposit"))
+                        .reduce((s: number, t: any) => s + Number(t.amount), 0)
                         .toLocaleString()}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">Interest Paid</p>
-                      <p className="font-bold text-green-500">₹{(lookupData.credits || []).reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString()}</p>
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                      <p className="font-bold text-primary">₹{(() => {
+                        const t = lookupData.transactions || [];
+                        const credits = t.filter((x: any) => x.status === "success" && ["deposit","payout","refund","credit"].includes(x.type)).reduce((s: number, x: any) => s + Number(x.amount), 0);
+                        const wd = t.filter((x: any) => x.type === "withdraw").reduce((s: number, x: any) => s + Math.abs(Number(x.amount)), 0);
+                        return (credits - wd).toLocaleString();
+                      })()}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">KYC</p>
-                      <p className="font-semibold capitalize">{lookupData.kyc?.status || "Not submitted"}</p>
+                      <p className="text-xs text-muted-foreground">Withdrawn</p>
+                      <p className="font-bold text-destructive">₹{(lookupData.transactions || [])
+                        .filter((t: any) => t.type === "withdraw")
+                        .reduce((s: number, t: any) => s + Math.abs(Number(t.amount)), 0)
+                        .toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10">
+                      <p className="text-xs text-muted-foreground">Payout Due (10d)</p>
+                      <p className="font-bold text-green-500">₹{Math.round((lookupData.transactions || [])
+                        .filter((t: any) => t.status === "success" && t.type === "sip")
+                        .reduce((s: number, t: any) => s + Number(t.amount) * 1.4, 0))
+                        .toLocaleString()}</p>
                     </div>
                   </div>
 
