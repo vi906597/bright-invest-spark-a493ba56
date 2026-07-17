@@ -239,53 +239,67 @@ const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
 
   const open = (k: DialogKey) => setActiveDialog(k);
 
+const [withdrawMethod, setWithdrawMethod] = useState<"upi" | "bank">("upi");
+const [wUpi, setWUpi] = useState("");
+const [wHolder, setWHolder] = useState("");
+const [wAccount, setWAccount] = useState("");
+const [wIfsc, setWIfsc] = useState("");
+const [wBank, setWBank] = useState("");
+
 const handleWithdraw = async () => {
-  if (!withdrawAmount || Number(withdrawAmount) <= 0) {
+  const amt = Number(withdrawAmount);
+  if (!amt || amt <= 0) {
     toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
     return;
   }
-  if (kycStatus !== "approved") {
-    toast({ title: "KYC required", description: "Complete KYC verification before withdrawing.", variant: "destructive" });
-    return;
-  }
-  if (Number(withdrawAmount) > totalValue) {
+  if (amt > totalValue) {
     toast({ title: "Limit exceeded ❌", description: `Max withdraw ₹${totalValue.toLocaleString()}`, variant: "destructive" });
     return;
   }
-  if (!userBank) {
-    toast({ title: "No bank account", description: "Please add a primary bank account first.", variant: "destructive" });
-    return;
+  if (withdrawMethod === "upi") {
+    if (!wUpi.trim() || !wUpi.includes("@")) {
+      toast({ title: "Invalid UPI ID", description: "Enter a valid UPI ID (e.g. name@paytm)", variant: "destructive" });
+      return;
+    }
+  } else {
+    if (!wHolder.trim() || !wAccount.trim() || !wIfsc.trim() || !wBank.trim()) {
+      toast({ title: "Missing bank details", description: "Fill all bank fields", variant: "destructive" });
+      return;
+    }
   }
   setWithdrawBusy(true);
-  const amt = Number(withdrawAmount);
-  const { data: wRow, error } = await supabase.from("withdrawals").insert({
+  const payload: any = {
     user_id: user.id,
     amount: amt,
-    bank_name: userBank.bank_name,
-    account_number: userBank.account_number,
-    account_holder: userBank.account_holder,
-    ifsc_code: userBank.ifsc_code,
-    method: "bank",
+    method: withdrawMethod,
     status: "pending",
-  }).select().maybeSingle();
+  };
+  if (withdrawMethod === "upi") {
+    payload.upi_id = wUpi.trim();
+  } else {
+    payload.account_holder = wHolder.trim();
+    payload.account_number = wAccount.trim();
+    payload.ifsc_code = wIfsc.trim().toUpperCase();
+    payload.bank_name = wBank.trim();
+  }
+  const { data: wRow, error } = await supabase.from("withdrawals").insert(payload).select().maybeSingle();
   if (error) {
     setWithdrawBusy(false);
     toast({ title: "Error", description: error.message, variant: "destructive" });
     return;
   }
-  // Deduct amount from balance immediately (debit transaction)
   await supabase.from("transactions").insert({
     user_id: user.id,
     amount: -amt,
     plan_name: "Withdrawal",
     type: "withdraw",
     status: "success",
-    notes: `Withdraw request${wRow?.id ? ` #${wRow.id}` : ""} to ${userBank.bank_name} A/C ${userBank.account_number}`,
+    notes: `Withdraw request${wRow?.id ? ` #${wRow.id}` : ""} via ${withdrawMethod === "upi" ? `UPI ${wUpi}` : `${wBank} A/C ${wAccount}`}`,
   });
   setWithdrawBusy(false);
   toast({ title: "Withdraw request sent 💸", description: `₹${amt.toLocaleString()} deducted. Admin will verify within 24 hours.` });
-  setWithdrawAmount("");
-  setTotalValue((v) => v - amt);
+  setWithdrawAmount(""); setWUpi(""); setWHolder(""); setWAccount(""); setWIfsc(""); setWBank("");
+  await fetchWalletBalance();
   const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
   if (w) setWithdrawals(w);
 };
