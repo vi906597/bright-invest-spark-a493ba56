@@ -371,11 +371,12 @@ const AdminPanel = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-7xl space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Total Users</p><p className="text-2xl font-bold">{profiles.length}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Today Invested</p><p className="text-2xl font-bold text-primary">₹{todayInvestedAmount.toLocaleString()}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Total Invested</p><p className="text-2xl font-bold text-primary">₹{totalInvested.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due (10d, 40%)</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4 border-blue-500/40 bg-blue-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Next 10 Days Payout</p><p className="text-2xl font-bold text-blue-500">₹{Math.round(next10DaysPayout).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{next10Days.length} maturing</p></Card>
           <Card className="p-4 border-amber-500/40 bg-amber-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Maturing Today</p><p className="text-2xl font-bold text-amber-500">₹{Math.round(maturingTodayAmount).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{maturingToday.length} investment(s)</p></Card>
         </div>
 
