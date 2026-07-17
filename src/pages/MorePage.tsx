@@ -26,7 +26,7 @@ import { useToast } from "@/hooks/use-toast";
 
 // 1) DialogKey me withdraw add karo
 type DialogKey =
-  | "personal" | "phone" | "kyc" | "bank" | "withdraw" | "security" | "card"
+  | "personal" | "phone" | "withdraw" | "security" | "card"
   | "watchlist" | "statements"
   | "language" | "applock"
   | "help" | "contact" | "refer" | "about"
