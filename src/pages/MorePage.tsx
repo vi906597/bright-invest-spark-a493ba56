@@ -66,44 +66,28 @@ const [accounts, setAccounts] = useState<any[]>([]);
 
   fetchBanks();
 }, [user]);
-  useEffect(() => {
-  const fetchTotalValue = async () => {
+  const fetchWalletBalance = async () => {
     if (!user) return;
-
-    const [{ data: txs }, { data: credits }] = await Promise.all([
-      supabase.from("transactions").select("amount, type, status").eq("user_id", user.id),
-      supabase.from("daily_interest_credits").select("amount").eq("user_id", user.id),
-    ]);
-
-    const invested = (txs || [])
+    const { data: txs } = await supabase.from("transactions").select("amount, type, status").eq("user_id", user.id);
+    const credits = (txs || [])
       .filter((t: any) => {
         const type = (t.type || "").toLowerCase().trim();
         const status = (t.status || "").toLowerCase().trim();
-        return status === "success" && (type === "sip" || type === "deposit" || type === "credit");
+        return status === "success" && (type === "deposit" || type === "payout" || type === "refund" || type === "credit");
       })
       .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-
     const withdrawn = (txs || [])
       .filter((t: any) => (t.type || "").toLowerCase().trim() === "withdraw")
       .reduce((s: number, t: any) => s + Math.abs(Number(t.amount || 0)), 0);
-
-    const totalInterest = (credits || []).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
-
-    setTotalValue(invested + totalInterest - withdrawn);
+    setTotalValue(credits - withdrawn);
   };
-
-  fetchTotalValue();
-}, [user]);
+  useEffect(() => { fetchWalletBalance(); }, [user]);
 
 useEffect(() => {
   const loadExtras = async () => {
     if (!user) return;
-    const [w, k] = await Promise.all([
-      supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("kyc_submissions").select("status").eq("user_id", user.id).maybeSingle(),
-    ]);
-    if (w.data) setWithdrawals(w.data);
-    setKycStatus((k.data as any)?.status || "none");
+    const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (w) setWithdrawals(w);
   };
   loadExtras();
 }, [user, activeDialog]);
