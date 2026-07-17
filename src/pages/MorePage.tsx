@@ -538,25 +538,13 @@ const handleWithdraw = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* KYC */}
-      {user && <KycDialog open={activeDialog === "kyc"} onOpenChange={(o) => !o && setActiveDialog(null)} userId={user.id} />}
-
-      {/* Bank */}
-      {user && <BankAccountsDialog open={activeDialog === "bank"} onOpenChange={(o) => !o && setActiveDialog(null)} userId={user.id} />}
-
-    {/* Withdraw */}
+      {/* Withdraw */}
 <Dialog open={activeDialog === "withdraw"} onOpenChange={(o) => !o && setActiveDialog(null)}>
   <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
     <DialogHeader>
       <DialogTitle>Withdraw Funds</DialogTitle>
-      <DialogDescription>Available balance: ₹{totalValue.toLocaleString()}</DialogDescription>
+      <DialogDescription>Wallet Balance: ₹{totalValue.toLocaleString()}</DialogDescription>
     </DialogHeader>
-
-    {kycStatus !== "approved" && (
-      <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400">
-        ⚠️ KYC {kycStatus === "pending" ? "is pending verification" : kycStatus === "rejected" ? "was rejected" : "not submitted"}. Withdrawals are only allowed after KYC approval.
-      </div>
-    )}
 
     <div className="space-y-3">
       <div>
@@ -576,14 +564,27 @@ const handleWithdraw = async () => {
         </div>
       </div>
 
-      <div className="p-3 rounded-xl border border-border bg-secondary/30">
-        <p className="text-sm font-medium">Bank Account</p>
-        <p className="text-xs text-muted-foreground">
-          {userBank
-            ? `${userBank.account_holder} • ${userBank.bank_name} • ****${userBank.account_number.slice(-4)} • ${userBank.ifsc_code}`
-            : "No bank linked — add one from Bank Accounts"}
-        </p>
+      <div>
+        <label className="text-sm font-medium">Payout Method</label>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <Button type="button" variant={withdrawMethod === "upi" ? "default" : "outline"} className="rounded-xl" onClick={() => setWithdrawMethod("upi")}>UPI ID</Button>
+          <Button type="button" variant={withdrawMethod === "bank" ? "default" : "outline"} className="rounded-xl" onClick={() => setWithdrawMethod("bank")}>Bank Account</Button>
+        </div>
       </div>
+
+      {withdrawMethod === "upi" ? (
+        <div>
+          <Label>UPI ID</Label>
+          <Input placeholder="yourname@paytm / @okhdfc / @ybl" value={wUpi} onChange={(e) => setWUpi(e.target.value)} />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div><Label>Account Holder Name</Label><Input value={wHolder} onChange={(e) => setWHolder(e.target.value)} placeholder="As per bank" /></div>
+          <div><Label>Account Number</Label><Input value={wAccount} onChange={(e) => setWAccount(e.target.value.replace(/\D/g, ""))} placeholder="Bank account number" /></div>
+          <div><Label>IFSC Code</Label><Input value={wIfsc} onChange={(e) => setWIfsc(e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" /></div>
+          <div><Label>Bank Name</Label><Input value={wBank} onChange={(e) => setWBank(e.target.value)} placeholder="HDFC Bank" /></div>
+        </div>
+      )}
 
       {withdrawals.length > 0 && (
         <div>
@@ -592,7 +593,7 @@ const handleWithdraw = async () => {
             {withdrawals.slice(0, 8).map(w => (
               <div key={w.id} className="flex items-center justify-between p-2 rounded-lg border border-border text-xs">
                 <div>
-                  <p className="font-medium">₹{Number(w.amount).toLocaleString()}</p>
+                  <p className="font-medium">₹{Number(w.amount).toLocaleString()} · {w.method === "upi" ? `UPI: ${w.upi_id}` : `${w.bank_name} ****${String(w.account_number || "").slice(-4)}`}</p>
                   <p className="text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
                   {w.utr && <p className="text-muted-foreground">UTR: {w.utr}</p>}
                   {w.rejection_reason && <p className="text-destructive">{w.rejection_reason}</p>}
@@ -606,7 +607,7 @@ const handleWithdraw = async () => {
     </div>
 
     <DialogFooter>
-      <Button onClick={handleWithdraw} className="rounded-xl" disabled={withdrawBusy || kycStatus !== "approved" || !userBank}>
+      <Button onClick={handleWithdraw} className="rounded-xl" disabled={withdrawBusy || totalValue <= 0}>
         {withdrawBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
         Withdraw Now
       </Button>
