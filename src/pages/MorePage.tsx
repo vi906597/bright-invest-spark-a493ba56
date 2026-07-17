@@ -18,8 +18,6 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger
 } from "@/components/ui/accordion";
 import BottomNav from "@/components/BottomNav";
-import KycDialog from "@/components/KycDialog";
-import BankAccountsDialog from "@/components/BankAccountsDialog";
 import EaishaCardDialog from "@/components/EaishaCardDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
