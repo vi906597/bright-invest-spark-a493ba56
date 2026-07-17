@@ -40,30 +40,7 @@ const MorePage = () => {
 const [withdrawAmount, setWithdrawAmount] = useState("");
 const [withdrawBusy, setWithdrawBusy] = useState(false);
 const [withdrawals, setWithdrawals] = useState<any[]>([]);
-const [kycStatus, setKycStatus] = useState<string>("none");
-const [accounts, setAccounts] = useState<any[]>([]);
   const [totalValue, setTotalValue] = useState(0);
-  useEffect(() => {
-  const fetchBanks = async () => {
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from("bank_accounts")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.log(error);
-      return;
-    }
-
-    if (data) {
-      setAccounts(data);
-    }
-  };
-
-  fetchBanks();
-}, [user]);
   const fetchWalletBalance = async () => {
     if (!user) return;
     const { data: txs } = await supabase.from("transactions").select("amount, type, status").eq("user_id", user.id);
