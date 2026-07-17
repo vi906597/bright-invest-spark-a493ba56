@@ -310,31 +310,41 @@ const AdminPanel = () => {
 
   const pendingCount = kycs.filter(k => k.status === "pending").length;
   const isInvestType = (t: Tx) => t.type === "sip" || t.type === "deposit";
+  // Sum of amount (withdraw stored as negative already, so this is net)
   const userInvested = (uid: string) => txs
-    .filter(t => t.user_id === uid && t.status === "success" && (isInvestType(t) || t.type === "withdraw"))
+    .filter(t => t.user_id === uid && t.status === "success" && (t.type === "sip" || t.type === "deposit"))
     .reduce((s, t) => s + Number(t.amount), 0);
+  const userWalletBalance = (uid: string) => {
+    const credits = txs
+      .filter(t => t.user_id === uid && t.status === "success" && (t.type === "deposit" || t.type === "payout" || t.type === "refund" || t.type === "credit"))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const withdrawn = txs
+      .filter(t => t.user_id === uid && t.type === "withdraw")
+      .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    return credits - withdrawn;
+  };
   const totalInvested = profiles.reduce((s, p) => s + Math.max(0, userInvested(p.user_id)), 0);
   const totalInterestPaid = credits.reduce((s, c) => s + Number(c.amount), 0);
   const today = new Date().toISOString().split("T")[0];
   const todayInterestPaid = credits.filter(c => c.credit_date === today).reduce((s, c) => s + Number(c.amount), 0);
   const userInterest = (uid: string) => credits.filter(c => c.user_id === uid).reduce((s, c) => s + Number(c.amount), 0);
 
-  // ---- Investment tracking (10-day, 40% return) ----
-  const activeInvestments = txs.filter(t => t.status === "success" && isInvestType(t));
+  // ---- Investment tracking (10-day, 40% return) — only sip type in 'success' status ----
+  const activeInvestments = txs.filter(t => t.status === "success" && t.type === "sip");
   const todayInvestedAmount = activeInvestments
     .filter(t => new Date(t.created_at).toISOString().split("T")[0] === today)
     .reduce((s, t) => s + Number(t.amount), 0);
   const totalPayoutDue = activeInvestments.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
   const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  const maturityDateOf = (iso: string) => {
-    const d = new Date(iso); d.setDate(d.getDate() + 10);
-    return d;
-  };
-  const maturingToday = activeInvestments.filter(t => {
-    const md = maturityDateOf(t.created_at).toISOString().split("T")[0];
-    return md === today;
-  });
+  const maturityDateOf = (iso: string) => { const d = new Date(iso); d.setDate(d.getDate() + 10); return d; };
+  const maturingToday = activeInvestments.filter(t => maturityDateOf(t.created_at).toISOString().split("T")[0] === today);
   const maturingTodayAmount = maturingToday.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const nowMs = Date.now();
+  const next10Days = activeInvestments.filter(t => {
+    const md = maturityDateOf(t.created_at).getTime();
+    return md >= nowMs && md <= nowMs + 10 * 86400000;
+  });
+  const next10DaysPayout = next10Days.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
   const userPayoutDue = (uid: string) => activeInvestments
     .filter(t => t.user_id === uid)
     .reduce((s, t) => s + Number(t.amount) * 1.4, 0);
@@ -361,11 +371,12 @@ const AdminPanel = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 max-w-7xl space-y-5">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><Users className="w-3 h-3" />Total Users</p><p className="text-2xl font-bold">{profiles.length}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Today Invested</p><p className="text-2xl font-bold text-primary">₹{todayInvestedAmount.toLocaleString()}</p></Card>
           <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><IndianRupee className="w-3 h-3" />Total Invested</p><p className="text-2xl font-bold text-primary">₹{totalInvested.toLocaleString()}</p></Card>
-          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due (10d, 40%)</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4"><p className="text-xs text-muted-foreground flex items-center gap-1"><TrendingUp className="w-3 h-3" />Total Payout Due</p><p className="text-2xl font-bold text-green-500">₹{Math.round(totalPayoutDue).toLocaleString()}</p></Card>
+          <Card className="p-4 border-blue-500/40 bg-blue-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Next 10 Days Payout</p><p className="text-2xl font-bold text-blue-500">₹{Math.round(next10DaysPayout).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{next10Days.length} maturing</p></Card>
           <Card className="p-4 border-amber-500/40 bg-amber-500/5"><p className="text-xs text-muted-foreground flex items-center gap-1"><Coins className="w-3 h-3" />Maturing Today</p><p className="text-2xl font-bold text-amber-500">₹{Math.round(maturingTodayAmount).toLocaleString()}</p><p className="text-[10px] text-muted-foreground">{maturingToday.length} investment(s)</p></Card>
         </div>
 
@@ -513,26 +524,41 @@ const AdminPanel = () => {
 
               {lookupData && (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
                     <div className="p-3 rounded-lg bg-secondary">
                       <p className="text-xs text-muted-foreground">User</p>
                       <p className="font-semibold text-sm truncate">{lookupData.profile?.full_name || "—"}</p>
                       <p className="text-xs text-muted-foreground truncate">{lookupData.user.email}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">Invested (net)</p>
+                      <p className="text-xs text-muted-foreground">Invested (SIP)</p>
                       <p className="font-bold text-primary">₹{(lookupData.transactions || [])
-                        .filter((t: any) => t.status === "success")
-                        .reduce((s: number, t: any) => s + (t.type === "withdraw" ? -1 : 1) * Number(t.amount), 0)
+                        .filter((t: any) => t.status === "success" && (t.type === "sip" || t.type === "deposit"))
+                        .reduce((s: number, t: any) => s + Number(t.amount), 0)
                         .toLocaleString()}</p>
                     </div>
-                    <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">Interest Paid</p>
-                      <p className="font-bold text-green-500">₹{(lookupData.credits || []).reduce((s: number, c: any) => s + Number(c.amount), 0).toLocaleString()}</p>
+                    <div className="p-3 rounded-lg bg-primary/10">
+                      <p className="text-xs text-muted-foreground">Wallet Balance</p>
+                      <p className="font-bold text-primary">₹{(() => {
+                        const t = lookupData.transactions || [];
+                        const credits = t.filter((x: any) => x.status === "success" && ["deposit","payout","refund","credit"].includes(x.type)).reduce((s: number, x: any) => s + Number(x.amount), 0);
+                        const wd = t.filter((x: any) => x.type === "withdraw").reduce((s: number, x: any) => s + Math.abs(Number(x.amount)), 0);
+                        return (credits - wd).toLocaleString();
+                      })()}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-secondary">
-                      <p className="text-xs text-muted-foreground">KYC</p>
-                      <p className="font-semibold capitalize">{lookupData.kyc?.status || "Not submitted"}</p>
+                      <p className="text-xs text-muted-foreground">Withdrawn</p>
+                      <p className="font-bold text-destructive">₹{(lookupData.transactions || [])
+                        .filter((t: any) => t.type === "withdraw")
+                        .reduce((s: number, t: any) => s + Math.abs(Number(t.amount)), 0)
+                        .toLocaleString()}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-green-500/10">
+                      <p className="text-xs text-muted-foreground">Payout Due (10d)</p>
+                      <p className="font-bold text-green-500">₹{Math.round((lookupData.transactions || [])
+                        .filter((t: any) => t.status === "success" && t.type === "sip")
+                        .reduce((s: number, t: any) => s + Number(t.amount) * 1.4, 0))
+                        .toLocaleString()}</p>
                     </div>
                   </div>
 

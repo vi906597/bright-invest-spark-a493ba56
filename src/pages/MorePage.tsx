@@ -18,15 +18,13 @@ import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger
 } from "@/components/ui/accordion";
 import BottomNav from "@/components/BottomNav";
-import KycDialog from "@/components/KycDialog";
-import BankAccountsDialog from "@/components/BankAccountsDialog";
 import EaishaCardDialog from "@/components/EaishaCardDialog";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 // 1) DialogKey me withdraw add karo
 type DialogKey =
-  | "personal" | "phone" | "kyc" | "bank" | "withdraw" | "security" | "card"
+  | "personal" | "phone" | "withdraw" | "security" | "card"
   | "watchlist" | "statements"
   | "language" | "applock"
   | "help" | "contact" | "refer" | "about"
@@ -42,73 +40,34 @@ const MorePage = () => {
 const [withdrawAmount, setWithdrawAmount] = useState("");
 const [withdrawBusy, setWithdrawBusy] = useState(false);
 const [withdrawals, setWithdrawals] = useState<any[]>([]);
-const [kycStatus, setKycStatus] = useState<string>("none");
-const [accounts, setAccounts] = useState<any[]>([]);
   const [totalValue, setTotalValue] = useState(0);
-  useEffect(() => {
-  const fetchBanks = async () => {
+  const fetchWalletBalance = async () => {
     if (!user) return;
-
-    const { data, error } = await supabase
-      .from("bank_accounts")
-      .select("*")
-      .eq("user_id", user.id);
-
-    if (error) {
-      console.log(error);
-      return;
-    }
-
-    if (data) {
-      setAccounts(data);
-    }
-  };
-
-  fetchBanks();
-}, [user]);
-  useEffect(() => {
-  const fetchTotalValue = async () => {
-    if (!user) return;
-
-    const [{ data: txs }, { data: credits }] = await Promise.all([
-      supabase.from("transactions").select("amount, type, status").eq("user_id", user.id),
-      supabase.from("daily_interest_credits").select("amount").eq("user_id", user.id),
-    ]);
-
-    const invested = (txs || [])
+    const { data: txs } = await supabase.from("transactions").select("amount, type, status").eq("user_id", user.id);
+    const credits = (txs || [])
       .filter((t: any) => {
         const type = (t.type || "").toLowerCase().trim();
         const status = (t.status || "").toLowerCase().trim();
-        return status === "success" && (type === "sip" || type === "deposit" || type === "credit");
+        return status === "success" && (type === "deposit" || type === "payout" || type === "refund" || type === "credit");
       })
       .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
-
     const withdrawn = (txs || [])
       .filter((t: any) => (t.type || "").toLowerCase().trim() === "withdraw")
       .reduce((s: number, t: any) => s + Math.abs(Number(t.amount || 0)), 0);
-
-    const totalInterest = (credits || []).reduce((s: number, c: any) => s + Number(c.amount || 0), 0);
-
-    setTotalValue(invested + totalInterest - withdrawn);
+    setTotalValue(credits - withdrawn);
   };
-
-  fetchTotalValue();
-}, [user]);
+  useEffect(() => { fetchWalletBalance(); }, [user]);
 
 useEffect(() => {
   const loadExtras = async () => {
     if (!user) return;
-    const [w, k] = await Promise.all([
-      supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
-      supabase.from("kyc_submissions").select("status").eq("user_id", user.id).maybeSingle(),
-    ]);
-    if (w.data) setWithdrawals(w.data);
-    setKycStatus((k.data as any)?.status || "none");
+    const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
+    if (w) setWithdrawals(w);
   };
   loadExtras();
 }, [user, activeDialog]);
 
-const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
+
 
   // Editable fields
   const [editName, setEditName] = useState("");
@@ -255,53 +214,67 @@ const userBank = accounts.find(acc => acc.is_primary) || accounts[0] || null;
 
   const open = (k: DialogKey) => setActiveDialog(k);
 
+const [withdrawMethod, setWithdrawMethod] = useState<"upi" | "bank">("upi");
+const [wUpi, setWUpi] = useState("");
+const [wHolder, setWHolder] = useState("");
+const [wAccount, setWAccount] = useState("");
+const [wIfsc, setWIfsc] = useState("");
+const [wBank, setWBank] = useState("");
+
 const handleWithdraw = async () => {
-  if (!withdrawAmount || Number(withdrawAmount) <= 0) {
+  const amt = Number(withdrawAmount);
+  if (!amt || amt <= 0) {
     toast({ title: "Invalid amount", description: "Enter a valid amount", variant: "destructive" });
     return;
   }
-  if (kycStatus !== "approved") {
-    toast({ title: "KYC required", description: "Complete KYC verification before withdrawing.", variant: "destructive" });
-    return;
-  }
-  if (Number(withdrawAmount) > totalValue) {
+  if (amt > totalValue) {
     toast({ title: "Limit exceeded ❌", description: `Max withdraw ₹${totalValue.toLocaleString()}`, variant: "destructive" });
     return;
   }
-  if (!userBank) {
-    toast({ title: "No bank account", description: "Please add a primary bank account first.", variant: "destructive" });
-    return;
+  if (withdrawMethod === "upi") {
+    if (!wUpi.trim() || !wUpi.includes("@")) {
+      toast({ title: "Invalid UPI ID", description: "Enter a valid UPI ID (e.g. name@paytm)", variant: "destructive" });
+      return;
+    }
+  } else {
+    if (!wHolder.trim() || !wAccount.trim() || !wIfsc.trim() || !wBank.trim()) {
+      toast({ title: "Missing bank details", description: "Fill all bank fields", variant: "destructive" });
+      return;
+    }
   }
   setWithdrawBusy(true);
-  const amt = Number(withdrawAmount);
-  const { data: wRow, error } = await supabase.from("withdrawals").insert({
+  const payload: any = {
     user_id: user.id,
     amount: amt,
-    bank_name: userBank.bank_name,
-    account_number: userBank.account_number,
-    account_holder: userBank.account_holder,
-    ifsc_code: userBank.ifsc_code,
-    method: "bank",
+    method: withdrawMethod,
     status: "pending",
-  }).select().maybeSingle();
+  };
+  if (withdrawMethod === "upi") {
+    payload.upi_id = wUpi.trim();
+  } else {
+    payload.account_holder = wHolder.trim();
+    payload.account_number = wAccount.trim();
+    payload.ifsc_code = wIfsc.trim().toUpperCase();
+    payload.bank_name = wBank.trim();
+  }
+  const { data: wRow, error } = await supabase.from("withdrawals").insert(payload).select().maybeSingle();
   if (error) {
     setWithdrawBusy(false);
     toast({ title: "Error", description: error.message, variant: "destructive" });
     return;
   }
-  // Deduct amount from balance immediately (debit transaction)
   await supabase.from("transactions").insert({
     user_id: user.id,
     amount: -amt,
     plan_name: "Withdrawal",
     type: "withdraw",
     status: "success",
-    notes: `Withdraw request${wRow?.id ? ` #${wRow.id}` : ""} to ${userBank.bank_name} A/C ${userBank.account_number}`,
+    notes: `Withdraw request${wRow?.id ? ` #${wRow.id}` : ""} via ${withdrawMethod === "upi" ? `UPI ${wUpi}` : `${wBank} A/C ${wAccount}`}`,
   });
   setWithdrawBusy(false);
   toast({ title: "Withdraw request sent 💸", description: `₹${amt.toLocaleString()} deducted. Admin will verify within 24 hours.` });
-  setWithdrawAmount("");
-  setTotalValue((v) => v - amt);
+  setWithdrawAmount(""); setWUpi(""); setWHolder(""); setWAccount(""); setWIfsc(""); setWBank("");
+  await fetchWalletBalance();
   const { data: w } = await supabase.from("withdrawals").select("*").eq("user_id", user.id).order("created_at", { ascending: false });
   if (w) setWithdrawals(w);
 };
@@ -327,13 +300,7 @@ const handleWithdraw = async () => {
           badgeColor: profile?.phone_verified ? "text-green-500 bg-green-500/10" : "text-amber-500 bg-amber-500/10",
           action: () => open("phone"),
         },
-        { icon: Shield, label: "KYC Verification",
-          desc: kycStatus === "approved" ? "Your KYC is verified" : kycStatus === "pending" ? "Under review by admin" : kycStatus === "rejected" ? "KYC rejected — resubmit" : "Complete your KYC",
-          badge: kycStatus === "approved" ? "Verified" : kycStatus === "pending" ? "Pending" : kycStatus === "rejected" ? "Rejected" : "Pending",
-          badgeColor: kycStatus === "approved" ? "text-green-500 bg-green-500/10" : kycStatus === "rejected" ? "text-destructive bg-destructive/10" : "text-amber-500 bg-amber-500/10",
-          action: () => open("kyc") },
         { icon: CreditCard, label: "ZYPEUS CARD", desc: "View your unique investor card", badge: "New", badgeColor: "text-primary bg-primary/10", action: () => open("card") },
-        { icon: CreditCard, label: "Bank Accounts", desc: "Manage linked accounts", action: () => open("bank") },
         { icon: Download, label: "Withdraw", desc: "Request fund withdrawal", action: () => open("withdraw") },
         { icon: Lock, label: "Security", desc: "Password, 2FA settings", action: () => open("security") },
       ],
@@ -546,25 +513,13 @@ const handleWithdraw = async () => {
         </DialogContent>
       </Dialog>
 
-      {/* KYC */}
-      {user && <KycDialog open={activeDialog === "kyc"} onOpenChange={(o) => !o && setActiveDialog(null)} userId={user.id} />}
-
-      {/* Bank */}
-      {user && <BankAccountsDialog open={activeDialog === "bank"} onOpenChange={(o) => !o && setActiveDialog(null)} userId={user.id} />}
-
-    {/* Withdraw */}
+      {/* Withdraw */}
 <Dialog open={activeDialog === "withdraw"} onOpenChange={(o) => !o && setActiveDialog(null)}>
   <DialogContent className="rounded-2xl max-h-[90vh] overflow-y-auto">
     <DialogHeader>
       <DialogTitle>Withdraw Funds</DialogTitle>
-      <DialogDescription>Available balance: ₹{totalValue.toLocaleString()}</DialogDescription>
+      <DialogDescription>Wallet Balance: ₹{totalValue.toLocaleString()}</DialogDescription>
     </DialogHeader>
-
-    {kycStatus !== "approved" && (
-      <div className="p-3 rounded-xl border border-amber-500/30 bg-amber-500/10 text-xs text-amber-600 dark:text-amber-400">
-        ⚠️ KYC {kycStatus === "pending" ? "is pending verification" : kycStatus === "rejected" ? "was rejected" : "not submitted"}. Withdrawals are only allowed after KYC approval.
-      </div>
-    )}
 
     <div className="space-y-3">
       <div>
@@ -584,14 +539,27 @@ const handleWithdraw = async () => {
         </div>
       </div>
 
-      <div className="p-3 rounded-xl border border-border bg-secondary/30">
-        <p className="text-sm font-medium">Bank Account</p>
-        <p className="text-xs text-muted-foreground">
-          {userBank
-            ? `${userBank.account_holder} • ${userBank.bank_name} • ****${userBank.account_number.slice(-4)} • ${userBank.ifsc_code}`
-            : "No bank linked — add one from Bank Accounts"}
-        </p>
+      <div>
+        <label className="text-sm font-medium">Payout Method</label>
+        <div className="grid grid-cols-2 gap-2 mt-1">
+          <Button type="button" variant={withdrawMethod === "upi" ? "default" : "outline"} className="rounded-xl" onClick={() => setWithdrawMethod("upi")}>UPI ID</Button>
+          <Button type="button" variant={withdrawMethod === "bank" ? "default" : "outline"} className="rounded-xl" onClick={() => setWithdrawMethod("bank")}>Bank Account</Button>
+        </div>
       </div>
+
+      {withdrawMethod === "upi" ? (
+        <div>
+          <Label>UPI ID</Label>
+          <Input placeholder="yourname@paytm / @okhdfc / @ybl" value={wUpi} onChange={(e) => setWUpi(e.target.value)} />
+        </div>
+      ) : (
+        <div className="space-y-2">
+          <div><Label>Account Holder Name</Label><Input value={wHolder} onChange={(e) => setWHolder(e.target.value)} placeholder="As per bank" /></div>
+          <div><Label>Account Number</Label><Input value={wAccount} onChange={(e) => setWAccount(e.target.value.replace(/\D/g, ""))} placeholder="Bank account number" /></div>
+          <div><Label>IFSC Code</Label><Input value={wIfsc} onChange={(e) => setWIfsc(e.target.value.toUpperCase())} placeholder="e.g. HDFC0001234" /></div>
+          <div><Label>Bank Name</Label><Input value={wBank} onChange={(e) => setWBank(e.target.value)} placeholder="HDFC Bank" /></div>
+        </div>
+      )}
 
       {withdrawals.length > 0 && (
         <div>
@@ -600,7 +568,7 @@ const handleWithdraw = async () => {
             {withdrawals.slice(0, 8).map(w => (
               <div key={w.id} className="flex items-center justify-between p-2 rounded-lg border border-border text-xs">
                 <div>
-                  <p className="font-medium">₹{Number(w.amount).toLocaleString()}</p>
+                  <p className="font-medium">₹{Number(w.amount).toLocaleString()} · {w.method === "upi" ? `UPI: ${w.upi_id}` : `${w.bank_name} ****${String(w.account_number || "").slice(-4)}`}</p>
                   <p className="text-muted-foreground">{new Date(w.created_at).toLocaleString()}</p>
                   {w.utr && <p className="text-muted-foreground">UTR: {w.utr}</p>}
                   {w.rejection_reason && <p className="text-destructive">{w.rejection_reason}</p>}
@@ -614,7 +582,7 @@ const handleWithdraw = async () => {
     </div>
 
     <DialogFooter>
-      <Button onClick={handleWithdraw} className="rounded-xl" disabled={withdrawBusy || kycStatus !== "approved" || !userBank}>
+      <Button onClick={handleWithdraw} className="rounded-xl" disabled={withdrawBusy || totalValue <= 0}>
         {withdrawBusy ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null}
         Withdraw Now
       </Button>
