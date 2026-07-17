@@ -14,6 +14,9 @@ import {
   BarChart3,
   Leaf,
   Rocket,
+  Wallet,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -31,8 +34,6 @@ const sipPlans = [
   { id: 6, name: "Growth Booster SIP", amount: 10000, returns: "23-28%", risk: "High", icon: Rocket, popular: false },
 ];
 
-const REDIRECT_URL = "https://instant-pay-wait.lovable.app";
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -45,108 +46,78 @@ const Dashboard = () => {
   const [payPlan, setPayPlan] = useState("");
   const [userId, setUserId] = useState<string>("");
   const [activeInvestments, setActiveInvestments] = useState<any[]>([]);
+  const [maturedList, setMaturedList] = useState<any[]>([]);
   const [stats, setStats] = useState({
+    walletBalance: 0,
     invested: 0,
-    currentValue: 0,
     activeSips: 0,
-    todayInterest: 0,
-    totalInterest: 0,
   });
 
   const loadStats = async (uid: string) => {
     const { data } = await supabase
       .from("transactions")
-      .select("id, amount, current_value, status, type, plan_name, created_at")
+      .select("id, amount, status, type, plan_name, created_at, notes")
       .eq("user_id", uid)
       .order("created_at", { ascending: false });
 
-    const today = new Date().toISOString().split("T")[0];
-
-    const { data: credits } = await supabase
-      .from("daily_interest_credits")
-      .select("amount, credit_date")
-      .eq("user_id", uid);
-
     const txs = data || [];
 
-    const invested = txs
-      .filter((t) => {
+    // Wallet = deposit + payout + refund − withdraw
+    const walletCredits = txs
+      .filter((t: any) => {
         const type = (t.type || "").toLowerCase().trim();
         const status = (t.status || "").toLowerCase().trim();
-        return (
-          status === "success" &&
-          (type === "sip" || type === "deposit" || type === "credit")
-        );
+        return status === "success" && (type === "deposit" || type === "payout" || type === "refund" || type === "credit");
       })
-      .reduce((s, t) => s + Number(t.amount || 0), 0);
+      .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
 
     const withdrawn = txs
-      .filter((t) => (t.type || "").toLowerCase().trim() === "withdraw")
-      .reduce((s, t) => s + Math.abs(Number(t.amount || 0)), 0);
+      .filter((t: any) => (t.type || "").toLowerCase().trim() === "withdraw")
+      .reduce((s: number, t: any) => s + Math.abs(Number(t.amount || 0)), 0);
 
-    const todayInterest = (credits || [])
-      .filter((c) => c.credit_date === today)
-      .reduce((s, c) => s + Number(c.amount || 0), 0);
+    const walletBalance = walletCredits - withdrawn;
 
-    const totalInterest = (credits || [])
-      .reduce((s, c) => s + Number(c.amount || 0), 0);
+    const invested = txs
+      .filter((t: any) => (t.type || "").toLowerCase().trim() === "sip" && (t.status || "").toLowerCase().trim() === "success")
+      .reduce((s: number, t: any) => s + Number(t.amount || 0), 0);
 
-    const activeSips = new Set(
-      txs
-        .filter((t) => (t.type || "").toLowerCase().trim() === "sip")
-        .map((t) => t.plan_name)
-    ).size;
+    const activeSips = txs.filter((t: any) => (t.type || "").toLowerCase().trim() === "sip" && (t.status || "").toLowerCase().trim() === "success").length;
 
-    setStats({
-      invested: invested - withdrawn,
-      currentValue: invested + totalInterest - withdrawn,
-      activeSips,
-      todayInterest,
-      totalInterest,
-    });
+    setStats({ walletBalance, invested, activeSips });
 
+    // Active investments (sip + success + not yet claimed/cancelled)
     const active = txs.filter((t: any) => {
       const type = (t.type || "").toLowerCase().trim();
       const status = (t.status || "").toLowerCase().trim();
-      return status === "success" && (type === "sip" || type === "deposit");
+      return type === "sip" && status === "success";
     });
     setActiveInvestments(active);
+
+    // Matured (claimed) & cancelled records
+    const done = txs.filter((t: any) => {
+      const type = (t.type || "").toLowerCase().trim();
+      const status = (t.status || "").toLowerCase().trim();
+      return type === "sip" && (status === "matured" || status === "cancelled");
+    });
+    setMaturedList(done);
   };
 
 
   React.useEffect(() => {
     const getUser = async () => {
-      const {
-        data: { user: authUser },
-      } = await supabase.auth.getUser();
-
-      if (!authUser) {
-        navigate("/");
-        return;
-      }
-
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+      if (!authUser) { navigate("/"); return; }
       setUserId(authUser.id);
-      setUserName(
-        authUser.user_metadata?.full_name ||
-          authUser.email?.split("@")[0] ||
-          "Investor"
-      );
-
+      setUserName(authUser.user_metadata?.full_name || authUser.email?.split("@")[0] || "Investor");
       await loadStats(authUser.id);
     };
-
     getUser();
   }, [navigate]);
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); navigate("/"); };
 
   const openUpiPay = (amount: number, planName: string) => {
-    setPayAmount(amount);
-    setPayPlan(planName);
-    setPayOpen(true);
+    setPayAmount(amount); setPayPlan(planName); setPayOpen(true);
   };
 
   const handlePayment = () => {
@@ -158,14 +129,46 @@ const Dashboard = () => {
   const handleCustomPay = () => {
     const amt = parseInt(customAmount);
     if (!amt || amt < 10) {
-      toast({
-        title: "Invalid Amount",
-        description: "Minimum SIP amount is ₹10",
-        variant: "destructive",
-      });
+      toast({ title: "Invalid Amount", description: "Minimum SIP amount is ₹10", variant: "destructive" });
       return;
     }
     openUpiPay(amt, "Custom SIP");
+  };
+
+  const claimPayout = async (inv: any) => {
+    const amt = Number(inv.amount);
+    const payout = Math.round(amt * 1.4);
+    const { error: e1 } = await supabase.from("transactions").update({ status: "matured" }).eq("id", inv.id);
+    if (e1) return toast({ title: "Error", description: e1.message, variant: "destructive" });
+    const { error: e2 } = await supabase.from("transactions").insert({
+      user_id: userId,
+      plan_name: `SIP Payout - ${inv.plan_name}`,
+      amount: payout,
+      type: "payout",
+      status: "success",
+      notes: `Matured payout for investment ${inv.id}`,
+    });
+    if (e2) return toast({ title: "Error", description: e2.message, variant: "destructive" });
+    toast({ title: "Payout claimed 🎉", description: `₹${payout.toLocaleString()} added to your wallet` });
+    loadStats(userId);
+  };
+
+  const cancelInvestment = async (inv: any) => {
+    if (!confirm("Cancel this investment? You'll get only your principal amount back (no 40% profit).")) return;
+    const amt = Number(inv.amount);
+    const { error: e1 } = await supabase.from("transactions").update({ status: "cancelled" }).eq("id", inv.id);
+    if (e1) return toast({ title: "Error", description: e1.message, variant: "destructive" });
+    const { error: e2 } = await supabase.from("transactions").insert({
+      user_id: userId,
+      plan_name: `SIP Refund - ${inv.plan_name}`,
+      amount: amt,
+      type: "refund",
+      status: "success",
+      notes: `Cancelled investment ${inv.id} - principal refund`,
+    });
+    if (e2) return toast({ title: "Error", description: e2.message, variant: "destructive" });
+    toast({ title: "Investment cancelled", description: `₹${amt.toLocaleString()} refunded to wallet` });
+    loadStats(userId);
   };
 
   return (
@@ -176,94 +179,61 @@ const Dashboard = () => {
             <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
               <Sparkles className="w-5 h-5 text-primary-foreground" />
             </div>
-            <h1 className="text-2xl font-bold">
-              ZY<span className="text-blue-800">PEUS</span>
-            </h1>
+            <h1 className="text-2xl font-bold">ZY<span className="text-blue-800">PEUS</span></h1>
           </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className="rounded-xl text-destructive"
-          >
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="rounded-xl text-destructive">
             <LogOut className="w-4 h-4" />
           </Button>
         </div>
       </header>
 
       <main className="container mx-auto px-4 py-8 pb-24 max-w-5xl">
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-3xl font-bold text-foreground">
-            Hello, <span className="text-primary">{userName}</span> 👋
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Start your wealth creation journey with monthly SIP
-          </p>
+        <div className="mb-6 animate-fade-in">
+          <h1 className="text-3xl font-bold text-foreground">Hello, <span className="text-primary">{userName}</span> 👋</h1>
+          <p className="text-muted-foreground mt-1">Grow your money with 40% return in 10 days</p>
         </div>
 
-        {stats.todayInterest > 0 && (
-          <Card className="p-4 mb-4 rounded-2xl border-2 border-green-500/30 bg-green-500/5 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center">
-                  <TrendingUp className="w-5 h-5 text-green-500" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Today interest amount 🎉</p>
-                  <p className="text-xl font-bold text-green-500">
-                    +₹{stats.todayInterest.toLocaleString()}
-                  </p>
-                </div>
+        {/* Wallet Balance - Prominent */}
+        <Card className="p-5 mb-4 rounded-2xl border-2 border-primary/30 gradient-primary text-primary-foreground animate-fade-in">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                <Wallet className="w-6 h-6" />
               </div>
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Total interest</p>
-                <p className="text-sm font-semibold text-green-500">
-                  ₹{stats.totalInterest.toLocaleString()}
-                </p>
+              <div>
+                <p className="text-xs opacity-90">Wallet Balance (Withdrawable)</p>
+                <p className="text-3xl font-bold">₹{stats.walletBalance.toLocaleString()}</p>
+              </div>
+            </div>
+            <Button variant="secondary" size="sm" className="rounded-xl" onClick={() => navigate("/more")}>
+              Withdraw <ArrowRight className="ml-1 w-4 h-4" />
+            </Button>
+          </div>
+        </Card>
+
+        <div className="grid grid-cols-2 gap-4 mb-8">
+          <Card className="p-4 rounded-2xl shadow-card border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Total Invested (SIP)</p>
+                <p className="text-xl font-bold mt-1 text-primary">₹{stats.invested.toLocaleString()}</p>
+              </div>
+              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+                <IndianRupee className="w-5 h-5 text-primary" />
               </div>
             </div>
           </Card>
-        )}
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-          {[
-            {
-              label: "Total Invested",
-              value: `₹${stats.invested.toLocaleString()}`,
-              icon: IndianRupee,
-              color: "text-primary",
-            },
-            {
-              label: "Current Value",
-              value: `₹${stats.currentValue.toLocaleString()}`,
-              icon: TrendingUp,
-              color: "text-green-500",
-            },
-            {
-              label: "Active SIPs",
-              value: String(stats.activeSips),
-              icon: Calendar,
-              color: "text-accent",
-            },
-          ].map((stat) => (
-            <Card
-              key={stat.label}
-              className="p-5 rounded-2xl shadow-card border-border hover:shadow-elevated transition-shadow"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
-                  <p className={`text-2xl font-bold mt-1 ${stat.color}`}>
-                    {stat.value}
-                  </p>
-                </div>
-                <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
+          <Card className="p-4 rounded-2xl shadow-card border-border">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-muted-foreground">Active SIPs</p>
+                <p className="text-xl font-bold mt-1 text-accent">{stats.activeSips}</p>
               </div>
-            </Card>
-          ))}
+              <div className="w-10 h-10 rounded-xl bg-secondary flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-accent" />
+              </div>
+            </div>
+          </Card>
         </div>
 
         {activeInvestments.length > 0 && (
@@ -286,16 +256,16 @@ const Dashboard = () => {
                     <div className="flex items-center justify-between mb-2">
                       <div>
                         <p className="font-bold text-foreground text-sm">{inv.plan_name}</p>
-                        <p className="text-xs text-muted-foreground">Invested ₹{amt.toLocaleString()} on {new Date(inv.created_at).toLocaleDateString()}</p>
+                        <p className="text-xs text-muted-foreground">₹{amt.toLocaleString()} · {new Date(inv.created_at).toLocaleDateString()}</p>
                       </div>
                       <span className={`text-xs px-2 py-1 rounded-full font-semibold ${matured ? "bg-green-500/15 text-green-600" : "bg-primary/15 text-primary"}`}>
-                        {matured ? "Matured ✓" : `Day ${daysDone}/10`}
+                        {matured ? "Ready to claim ✓" : `Day ${daysDone}/10`}
                       </span>
                     </div>
                     <div className="h-2 rounded-full bg-secondary overflow-hidden mb-2">
                       <div className="h-full gradient-primary" style={{ width: `${pct}%` }} />
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-xs">
+                    <div className="grid grid-cols-3 gap-2 text-xs mb-3">
                       <div className="rounded-lg bg-secondary px-2 py-1.5">
                         <p className="text-muted-foreground">Days Left</p>
                         <p className="font-bold text-foreground">{daysLeft} days</p>
@@ -309,14 +279,23 @@ const Dashboard = () => {
                         <p className="font-bold text-green-600">₹{payout.toLocaleString()}</p>
                       </div>
                     </div>
+                    <div className="flex gap-2">
+                      {matured ? (
+                        <Button size="sm" className="flex-1 rounded-xl bg-green-600 hover:bg-green-700 text-white" onClick={() => claimPayout(inv)}>
+                          <CheckCircle2 className="w-4 h-4 mr-1" /> Claim ₹{payout.toLocaleString()}
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="outline" className="flex-1 rounded-xl border-destructive/40 text-destructive hover:bg-destructive/10" onClick={() => cancelInvestment(inv)}>
+                          <XCircle className="w-4 h-4 mr-1" /> Cancel (refund ₹{amt.toLocaleString()})
+                        </Button>
+                      )}
+                    </div>
                   </Card>
                 );
               })}
             </div>
           </div>
         )}
-
-
 
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -330,18 +309,13 @@ const Dashboard = () => {
               <Card
                 key={plan.id}
                 className={`relative p-6 rounded-2xl cursor-pointer transition-all border-2 hover:shadow-elevated ${
-                  selectedPlan === plan.id
-                    ? "border-primary shadow-elevated"
-                    : "border-transparent shadow-card"
+                  selectedPlan === plan.id ? "border-primary shadow-elevated" : "border-transparent shadow-card"
                 }`}
                 onClick={() => setSelectedPlan(plan.id)}
               >
                 {plan.popular && (
-                  <span className="absolute top-3 right-3 text-xs font-semibold gradient-primary text-primary-foreground px-3 py-1 rounded-full">
-                    Popular
-                  </span>
+                  <span className="absolute top-3 right-3 text-xs font-semibold gradient-primary text-primary-foreground px-3 py-1 rounded-full">Popular</span>
                 )}
-
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-xl bg-secondary flex items-center justify-center shrink-0">
                     <plan.icon className="w-6 h-6 text-primary" />
@@ -349,9 +323,7 @@ const Dashboard = () => {
                   <div className="flex-1">
                     <h3 className="font-bold text-foreground">{plan.name}</h3>
                     <div className="mt-1">
-                      <span className="text-2xl font-bold text-primary">
-                        ₹{plan.amount.toLocaleString()}
-                      </span>
+                      <span className="text-2xl font-bold text-primary">₹{plan.amount.toLocaleString()}</span>
                     </div>
                     <div className="mt-3 space-y-2 text-sm">
                       <div className="flex items-center justify-between rounded-lg bg-primary/10 px-3 py-2">
@@ -371,14 +343,10 @@ const Dashboard = () => {
                     </div>
                   </div>
                 </div>
-
                 {selectedPlan === plan.id && (
                   <Button
                     className="w-full mt-4 rounded-xl gradient-primary text-primary-foreground font-semibold hover:opacity-90"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handlePayment();
-                    }}
+                    onClick={(e) => { e.stopPropagation(); handlePayment(); }}
                   >
                     Invest Now <ArrowRight className="ml-2 w-4 h-4" />
                   </Button>
@@ -394,9 +362,7 @@ const Dashboard = () => {
           </h3>
           <div className="flex gap-3">
             <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">
-                ₹
-              </span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground font-semibold">₹</span>
               <input
                 type="number"
                 placeholder="Enter amount (min ₹10)"
@@ -406,14 +372,47 @@ const Dashboard = () => {
                 className="w-full h-12 pl-8 pr-4 rounded-xl bg-secondary border border-border text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
               />
             </div>
-            <Button
-              className="h-12 px-6 rounded-xl gradient-primary text-primary-foreground font-semibold hover:opacity-90"
-              onClick={handleCustomPay}
-            >
+            <Button className="h-12 px-6 rounded-xl gradient-primary text-primary-foreground font-semibold hover:opacity-90" onClick={handleCustomPay}>
               Pay <ChevronRight className="ml-1 w-4 h-4" />
             </Button>
           </div>
         </Card>
+
+        {/* Completed / Cancelled History */}
+        {maturedList.length > 0 && (
+          <div className="mt-8">
+            <h2 className="text-xl font-bold text-foreground flex items-center gap-2 mb-4">
+              <CheckCircle2 className="w-5 h-5 text-green-500" /> Completed Investments
+            </h2>
+            <div className="space-y-2">
+              {maturedList.map((inv) => {
+                const amt = Number(inv.amount);
+                const status = (inv.status || "").toLowerCase();
+                const isMatured = status === "matured";
+                const payout = isMatured ? Math.round(amt * 1.4) : amt;
+                return (
+                  <Card key={inv.id} className={`p-4 rounded-2xl border ${isMatured ? "border-green-500/30 bg-green-500/5" : "border-border"}`}>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-sm">{inv.plan_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          ₹{amt.toLocaleString()} · {new Date(inv.created_at).toLocaleDateString()} · {isMatured ? "Matured (40% profit)" : "Cancelled (principal refund)"}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-xs px-2 py-1 rounded-full font-semibold ${isMatured ? "bg-green-500/15 text-green-600" : "bg-secondary text-muted-foreground"}`}>
+                          {isMatured ? "Matured ✓" : "Cancelled"}
+                        </span>
+                        <p className={`text-sm font-bold mt-1 ${isMatured ? "text-green-600" : "text-foreground"}`}>+₹{payout.toLocaleString()}</p>
+                        <p className="text-[10px] text-muted-foreground">credited to wallet</p>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
 
       <BottomNav />
