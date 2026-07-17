@@ -310,31 +310,41 @@ const AdminPanel = () => {
 
   const pendingCount = kycs.filter(k => k.status === "pending").length;
   const isInvestType = (t: Tx) => t.type === "sip" || t.type === "deposit";
+  // Sum of amount (withdraw stored as negative already, so this is net)
   const userInvested = (uid: string) => txs
-    .filter(t => t.user_id === uid && t.status === "success" && (isInvestType(t) || t.type === "withdraw"))
+    .filter(t => t.user_id === uid && t.status === "success" && (t.type === "sip" || t.type === "deposit"))
     .reduce((s, t) => s + Number(t.amount), 0);
+  const userWalletBalance = (uid: string) => {
+    const credits = txs
+      .filter(t => t.user_id === uid && t.status === "success" && (t.type === "deposit" || t.type === "payout" || t.type === "refund" || t.type === "credit"))
+      .reduce((s, t) => s + Number(t.amount), 0);
+    const withdrawn = txs
+      .filter(t => t.user_id === uid && t.type === "withdraw")
+      .reduce((s, t) => s + Math.abs(Number(t.amount)), 0);
+    return credits - withdrawn;
+  };
   const totalInvested = profiles.reduce((s, p) => s + Math.max(0, userInvested(p.user_id)), 0);
   const totalInterestPaid = credits.reduce((s, c) => s + Number(c.amount), 0);
   const today = new Date().toISOString().split("T")[0];
   const todayInterestPaid = credits.filter(c => c.credit_date === today).reduce((s, c) => s + Number(c.amount), 0);
   const userInterest = (uid: string) => credits.filter(c => c.user_id === uid).reduce((s, c) => s + Number(c.amount), 0);
 
-  // ---- Investment tracking (10-day, 40% return) ----
-  const activeInvestments = txs.filter(t => t.status === "success" && isInvestType(t));
+  // ---- Investment tracking (10-day, 40% return) — only sip type in 'success' status ----
+  const activeInvestments = txs.filter(t => t.status === "success" && t.type === "sip");
   const todayInvestedAmount = activeInvestments
     .filter(t => new Date(t.created_at).toISOString().split("T")[0] === today)
     .reduce((s, t) => s + Number(t.amount), 0);
   const totalPayoutDue = activeInvestments.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
   const daysSince = (iso: string) => Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
-  const maturityDateOf = (iso: string) => {
-    const d = new Date(iso); d.setDate(d.getDate() + 10);
-    return d;
-  };
-  const maturingToday = activeInvestments.filter(t => {
-    const md = maturityDateOf(t.created_at).toISOString().split("T")[0];
-    return md === today;
-  });
+  const maturityDateOf = (iso: string) => { const d = new Date(iso); d.setDate(d.getDate() + 10); return d; };
+  const maturingToday = activeInvestments.filter(t => maturityDateOf(t.created_at).toISOString().split("T")[0] === today);
   const maturingTodayAmount = maturingToday.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
+  const nowMs = Date.now();
+  const next10Days = activeInvestments.filter(t => {
+    const md = maturityDateOf(t.created_at).getTime();
+    return md >= nowMs && md <= nowMs + 10 * 86400000;
+  });
+  const next10DaysPayout = next10Days.reduce((s, t) => s + Number(t.amount) * 1.4, 0);
   const userPayoutDue = (uid: string) => activeInvestments
     .filter(t => t.user_id === uid)
     .reduce((s, t) => s + Number(t.amount) * 1.4, 0);
